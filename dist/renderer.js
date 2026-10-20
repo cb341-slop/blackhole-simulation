@@ -94,9 +94,18 @@ void main(){
   if(diskT<best){
    float inner=blackhole?6.:2.15;
    float dr=length(dp.xz)/mass,ang=atan(dp.z,dp.x);float profile=pow(inner/dr,1.65)*smoothstep(inner,inner+.45,dr)*(1.-smoothstep(diskRadius-1.5,diskRadius,dr));
-   float rings=.68+.32*sin(dr*23.+sin(ang*4.-time*.4)*2.);float swirl=.75+.25*noise(vec2(dr*10.,ang*9.-time*.25));
+   // Advect every visible feature together. Inner material rotates faster;
+   // this is an illustrative angular rate, not an accretion dynamics model.
+   float omega=1.35*pow(inner/max(dr,inner),1.5);
+   float phase=ang-time*omega;
+   float spiral=phase*3.+dr*1.35;
+   float rings=.62+.24*sin(dr*23.+sin(spiral)*2.);
+   // Circular coordinates keep turbulence continuous across the angular seam.
+   vec2 flow=vec2(cos(phase),sin(phase))*(4.+dr*.35);
+   float swirl=.4+.75*noise(flow+vec2(dr*2.3));
+   float ribbons=pow(.5+.5*cos(spiral),5.);
    float doppler=clamp(1.+.48*dot(sd,normalize(vec3(-dp.z,0,dp.x)))*sqrt(3./dr),.3,1.8);
-   float intensity=profile*rings*swirl*brightness*doppler*2.7;
+   float intensity=profile*(rings*swirl+.55*ribbons)*brightness*doppler*2.7;
    vec3 hot=mix(vec3(1.,.19,.035),vec3(1.,.78,.42),clamp(pow(inner/dr,.75),0.,1.));
    emission+=transmittance*hot*intensity;transmittance*=exp(-intensity*.52);
   }
