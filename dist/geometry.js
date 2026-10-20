@@ -24,15 +24,30 @@ export function traceRay(camera,direction,mass,charge,{lensing=true,step=.035,ma
 export class GeometryRenderer{
  constructor(gl){
   this.gl=gl;this.key='';this.traceKey='';this.paths=[];
-  const vs=`#version 300 es\nprecision highp float;in vec3 position;in vec4 color;out vec4 lineColor;uniform vec3 eye,right,up,forward;uniform float tanFov,aspect;void main(){vec3 p=position-eye;float z=dot(p,forward);gl_Position=vec4(dot(p,right)/(tanFov*aspect),dot(p,up)/tanFov,1.0002*z-.10001,z);gl_PointSize=4.;lineColor=color;}`;
+  const vs=`#version 300 es\nprecision highp float;in vec3 position;in vec4 color;out vec4 lineColor;uniform vec3 eye,right,up,forward;uniform float tanFov,aspect,pointSize;void main(){vec3 p=position-eye;float z=dot(p,forward);gl_Position=vec4(dot(p,right)/(tanFov*aspect),dot(p,up)/tanFov,1.0002*z-.10001,z);gl_PointSize=pointSize;lineColor=color;}`;
   const fs=`#version 300 es\nprecision highp float;in vec4 lineColor;uniform bool pointMode;out vec4 fragColor;void main(){if(pointMode&&length(gl_PointCoord-vec2(.5))>.5)discard;fragColor=lineColor;}`;
   const shader=(type,source)=>{const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
   this.program=gl.createProgram();gl.attachShader(this.program,shader(gl.VERTEX_SHADER,vs));gl.attachShader(this.program,shader(gl.FRAGMENT_SHADER,fs));gl.linkProgram(this.program);if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
   this.vao=gl.createVertexArray();gl.bindVertexArray(this.vao);this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);
   const p=gl.getAttribLocation(this.program,'position'),c=gl.getAttribLocation(this.program,'color');gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(c);gl.vertexAttribPointer(c,4,gl.FLOAT,false,28,12);
-  this.uniforms={};for(const n of ['eye','right','up','forward','tanFov','aspect','pointMode'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
+  this.uniforms={};for(const n of ['eye','right','up','forward','tanFov','aspect','pointMode','pointSize'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
   this.pointVao=gl.createVertexArray();gl.bindVertexArray(this.pointVao);this.pointBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(c);gl.vertexAttribPointer(c,4,gl.FLOAT,false,28,12);
  }
+ renderCustom({lines,points},view){
+  const gl=this.gl;
+  // This shares the line buffer with the ray view; invalidate its cached mesh.
+  this.key='';
+  gl.clearColor(.025,.034,.032,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(this.program);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.uniform3fv(this.uniforms.eye,view.camera);for(const n of ['right','up','forward'])gl.uniform3fv(this.uniforms[n],view[n]);
+  gl.uniform1f(this.uniforms.tanFov,Math.tan(52*Math.PI/360));gl.uniform1f(this.uniforms.aspect,gl.canvas.clientWidth/gl.canvas.clientHeight);
+  gl.uniform1f(this.uniforms.pointSize,Math.max(4,5*gl.canvas.width/gl.canvas.clientWidth));
+  gl.bindVertexArray(this.vao);gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(lines),gl.DYNAMIC_DRAW);
+  gl.uniform1i(this.uniforms.pointMode,0);gl.drawArrays(gl.LINES,0,lines.length/7);
+  if(points.length){gl.bindVertexArray(this.pointVao);gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(points),gl.DYNAMIC_DRAW);gl.uniform1i(this.uniforms.pointMode,1);gl.drawArrays(gl.POINTS,0,points.length/7);}
+  gl.disable(gl.BLEND);
+ }
+
  build(state,b,debug,aspect){
   const signature=JSON.stringify([state.mass,state.charge,state.blackhole,state.lensing,state.disk,state.diskRadius,state.fov,state.cubes,b,debug,aspect]);if(signature===this.key)return;this.key=signature;
   const vertices=[],line=(a,c,color)=>{vertices.push(...a,...color,...c,...color);};
@@ -65,7 +80,7 @@ export class GeometryRenderer{
   const gl=this.gl;this.build(state,observer,debug,aspect);
   if(clear){gl.clearColor(.025,.034,.032,1);gl.clear(gl.COLOR_BUFFER_BIT);}
   gl.useProgram(this.program);gl.bindVertexArray(this.vao);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  gl.uniform3fv(this.uniforms.eye,view.camera);for(const n of ['right','up','forward'])gl.uniform3fv(this.uniforms[n],view[n]);gl.uniform1f(this.uniforms.tanFov,Math.tan((clear?52:state.fov)*Math.PI/360));gl.uniform1f(this.uniforms.aspect,aspect);gl.uniform1i(this.uniforms.pointMode,0);gl.drawArrays(gl.LINES,0,this.count);
+  gl.uniform3fv(this.uniforms.eye,view.camera);for(const n of ['right','up','forward'])gl.uniform3fv(this.uniforms[n],view[n]);gl.uniform1f(this.uniforms.tanFov,Math.tan((clear?52:state.fov)*Math.PI/360));gl.uniform1f(this.uniforms.aspect,aspect);gl.uniform1f(this.uniforms.pointSize,4);gl.uniform1i(this.uniforms.pointMode,0);gl.drawArrays(gl.LINES,0,this.count);
   if(debug.rays&&this.paths.length){const points=[];this.paths.forEach((path,i)=>{const index=Math.floor(((state.time*.16+i*.071)%1)*(path.points.length-1));points.push(...path.points[index],1.,.93,.72,.95);});gl.bindVertexArray(this.pointVao);gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(points),gl.DYNAMIC_DRAW);gl.uniform1i(this.uniforms.pointMode,1);gl.drawArrays(gl.POINTS,0,points.length/7);}
   gl.disable(gl.BLEND);
  }

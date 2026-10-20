@@ -1,0 +1,80 @@
+// Execute actual app handlers against a minimal DOM/WebGL adapter. This checks
+// mode transitions and animation state; native browser QA covers shader output.
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import {GeometryRenderer} from '../dist/geometry.js';
+import {curvatureGeometry,tidalGeometry,tidalState} from '../dist/physics.js';
+
+const html=fs.readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../dist/app.js',import.meta.url),'utf8');
+const noop=()=>{},draws=[];
+const ctx=new Proxy({createLinearGradient:()=>({addColorStop:noop}),measureText:()=>({width:20})},{get:(o,k)=>o[k]??noop});
+function element(tag='div',attrs=''){
+ const events={},classes=new Set(),el={tagName:tag.toUpperCase(),events,style:{setProperty:noop},dataset:{},value:attrs.match(/\bvalue="([^"]*)"/)?.[1]??'',min:attrs.match(/\bmin="([^"]*)"/)?.[1]??0,max:attrs.match(/\bmax="([^"]*)"/)?.[1]??1,checked:/\bchecked\b/.test(attrs),hidden:/\bhidden\b/.test(attrs),width:1000,height:750,clientWidth:1000,clientHeight:750,children:[],classList:{toggle(k,on){if(on??!classes.has(k))classes.add(k);else classes.delete(k);return classes.has(k);},add:k=>classes.add(k),remove:k=>classes.delete(k),contains:k=>classes.has(k)},addEventListener(type,fn){(events[type]??=[]).push(fn);},setAttribute:noop,getBoundingClientRect:()=>({left:0,top:0,width:1000,height:750}),getContext:()=>ctx,closest:()=>element(),replaceChildren:noop,append:noop,focus:noop,setPointerCapture:noop};
+ return el;
+}
+const elements=Object.fromEntries([...html.matchAll(/<(\w+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)].map(([,tag,attrs,id])=>[id,element(tag,attrs)]));
+const document={hidden:false,getElementById:id=>{assert.ok(elements[id],`Missing DOM target: ${id}`);return elements[id];},querySelectorAll:()=>[],createElement:tag=>element(tag),body:element('body')};
+let bufferUploads=0,observerRenders=0;
+const gl=new Proxy({canvas:elements.universe,COMPILE_STATUS:1,LINK_STATUS:2,LINES:3,POINTS:4,createShader:()=>({}),createProgram:()=>({}),createVertexArray:()=>({}),createBuffer:()=>({}),getShaderParameter:()=>true,getProgramParameter:()=>true,getAttribLocation:()=>0,getUniformLocation:()=>({}),getParameter:()=>16384,bufferData:()=>bufferUploads++,drawArrays:(...a)=>draws.push(a)},{get:(o,k)=>o[k]??noop});
+class Renderer{constructor(){this.gl=gl;}render(){observerRenders++;return [1000,750];}upload(){}}
+class Image{set src(_){} }
+const sandbox={document,window:{addEventListener:noop},Renderer,GeometryRenderer,curvatureGeometry,tidalGeometry,tidalState,drawDiskUVReference:noop,inspectPixelRay:noop,matchMedia:()=>({matches:false}),performance:{now:()=>0},requestAnimationFrame:noop,ResizeObserver:class{observe(){}},Image,devicePixelRatio:1,console,setTimeout:()=>0,clearTimeout:noop,URL};
+vm.createContext(sandbox);
+vm.runInContext(app.replace(/^import .*;\n/gm,'')+'\nglobalThis.api={state,debug,inspection,view,geometry,frame,renderScene,updateTides};',sandbox);
+const {state,debug,inspection,view,geometry,renderScene,updateTides}=sandbox.api;
+let checks=0;
+const check=(condition,message)=>{assert.ok(condition,message);checks++;};
+const event=(id,type='click',value)=>{const el=elements[id];if(value!==undefined)el.value=value;for(const fn of el.events[type]??[])fn({target:el});};
+check(state.physicsView==='none'&&state.blackhole&&state.diskRadius===14,'Normal black-hole startup preserved');
+check(Object.values(debug).filter(v=>typeof v==='boolean').every(v=>!v),'Debug remains off at startup');
+event('curvatureViewBtn');renderScene();
+check(state.physicsView==='curvature'&&draws.at(-1)[0]===gl.LINES,'Curvature mode draws GPU lines');
+check(!elements.physicsHUD.hidden&&elements.tidalReadouts.hidden,'Only curvature HUD is active');
+const sourceCamera=JSON.stringify(view);
+event('curvatureScale','input','0');renderScene();
+check(state.curvatureScale===0&&elements.physicsNote.textContent.includes('Flattened'),'Flattening updates mesh and explanation');
+event('pathViewBtn');renderScene();
+check(state.physicsView==='none'&&state.pathView,'Light paths exit curvature');
+const pathKey=geometry.key,uploads=bufferUploads;
+event('curvatureViewBtn');renderScene();
+check(geometry.key==='','Custom diagram invalidates the shared line buffer cache');
+event('pathViewBtn');renderScene();
+check(geometry.key===pathKey&&bufferUploads>uploads,'Returning to unchanged light paths rebuilds the ray mesh');
+event('tidalViewBtn');
+check(state.physicsView==='tidal'&&!state.pathView&&!state.compare,'Tidal view is exclusive');
+updateTides(8);
+check(Math.abs(state.tidalProgress-.5)<1e-9,'Playback advances uniformly through proper-time progress');
+event('tidalHUDPlay');updateTides(2);
+check(state.tidalProgress===.5&&!state.tidalPlaying,'Visible HUD pause stops particle fall');
+event('tidalHUDProgress','input','.75');
+check(state.tidalProgress===.75&&!state.tidalPlaying&&+elements.tidalProgress.value===.75,'HUD scrub pauses and synchronizes sidebar');
+event('tidalHUDReplay');
+check(state.tidalProgress===0&&state.tidalPlaying&&!state.paused,'HUD replay resets and starts fall');
+event('pauseBtn');updateTides(4);
+check(state.tidalProgress===0&&state.paused,'Global pause also stops tides');
+event('tidalHUDPlay');updateTides(20);renderScene();
+check(state.tidalProgress===1&&!state.tidalPlaying&&tidalState(state.tidalProgress).radius>2,'Fall stops outside horizon');
+check(draws.at(-1)[0]===gl.POINTS&&draws.at(-1)[2]===226,'Particle mesh reaches GPU point pass');
+event('tidalHUDPlay');
+check(state.tidalProgress===0&&state.tidalPlaying,'Play at endpoint replays');
+check(JSON.stringify(view)===sourceCamera,'Physics cameras preserve source observer');
+const distance=inspection.distance;
+event('mass','input','2');
+check(inspection.distance===distance*2,'Mass changes rescale physics camera consistently');
+event('compareViewBtn');renderScene();
+check(state.physicsView==='none'&&state.compare&&!elements.comparisonLabels.hidden&&observerRenders>0,'Comparison restores observer rendering');
+event('tidalViewBtn');event('nakedModelBtn');renderScene();
+check(state.physicsView==='none'&&!state.blackhole,'Naked-singularity model exits Schwarzschild diagram');
+event('curvatureViewBtn');
+check(state.blackhole&&state.physicsView==='curvature','Selecting diagram returns to Schwarzschild model');
+event('diagnosticMode','change','2');
+check(state.physicsView==='none'&&state.diagnostic===2&&!elements.diagnosticLegend.hidden,'Render diagnostics remain available');
+event('tidalViewBtn');event('fallBtn');
+check(state.physicsView==='none'&&!elements.fallOverlay.hidden,'Existing cinematic fall exits physics view');
+event('curvatureViewBtn');event('rayProbe','change');
+// The adapter, like the DOM, does not toggle checkboxes on change alone.
+elements.rayProbe.checked=true;event('rayProbe','change');
+check(state.physicsView==='none'&&state.probe&&!elements.probePanel.hidden,'Cursor inspector exits diagram correctly');
+console.log(`${checks} interaction checks passed: startup, playback, scrub, shared GPU buffers, cameras, model and diagnostic transitions.`);
