@@ -1,10 +1,11 @@
 import {Renderer} from './renderer.js';
 import {GeometryRenderer} from './geometry.js';
 import {drawDiskUVReference} from './disk-uv.js';
+import {inspectPixelRay} from './ray-inspector.js';
 
 const $=id=>document.getElementById(id);
 const canvas=$('universe');
-const state={mass:1,charge:1.03,blackhole:true,pathView:false,compare:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.5,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
+const state={mass:1,charge:1.03,blackhole:true,pathView:false,compare:false,diagnostic:0,probe:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.5,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
 const debug={rays:false,center:false,rs:false,photon:false,grid:false,frustum:false,overlay:false,density:5};
 const inspection={theta:.92,phi:1.06,distance:47,target:[0,0,3]};
 const view={mode:'orbit',theta:.38,phi:1.30,distance:17,target:[0,0,0],position:[0,0,17],yaw:0,pitch:0};
@@ -25,19 +26,28 @@ function basis(){
 }
 function inspectionBasis(){const {theta,phi,distance,target}=inspection;const camera=add(target,[distance*Math.sin(phi)*Math.sin(theta),distance*Math.cos(phi),distance*Math.sin(phi)*Math.cos(theta)]),forward=norm(sub(target,camera)),right=norm(cross(forward,[0,1,0]));return {camera,forward,right,up:norm(cross(right,forward))};}
 function setPathView(enabled){
+ if(enabled){state.diagnostic=0;$('diagnosticMode').value='0';state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();}
  state.pathView=enabled;if(enabled){setComparison(false);if(!pathViewInitialized){for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugGrid','grid'],['debugFrustum','frustum']]){debug[key]=true;$(id).checked=true;}pathViewInitialized=true;}}
- $('pathView').checked=enabled;$('pathViewBtn').setAttribute('aria-pressed',String(enabled));$('pathViewBtn').textContent=enabled?'◉ Return to observer image ↗':'⌁ Explore light paths ↗';$('debugLegend').hidden=!enabled&&!debug.overlay;$('canvasHint').innerHTML=enabled?'<span>⌁</span> Drag to inspect rays <b>·</b> Scroll to zoom <b>·</b> WASD moves observer':'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move';dirty=true;
+ $('pathView').checked=enabled;$('pathViewBtn').setAttribute('aria-pressed',String(enabled));$('pathViewBtn').textContent=enabled?'◉ Observer image':'⌁ Light paths';$('debugLegend').hidden=!enabled&&!debug.overlay;$('canvasHint').innerHTML=enabled?'<span>⌁</span> Drag to inspect rays <b>·</b> Scroll to zoom <b>·</b> WASD moves observer':'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move';dirty=true;
 }
 function setComparison(enabled){
- if(enabled&&state.pathView)setPathView(false);state.compare=enabled;$('compareView').checked=enabled;$('compareViewBtn').setAttribute('aria-pressed',String(enabled));$('compareViewBtn').textContent=enabled?'◫ Single image':'◫ Compare lensing';$('comparisonLabels').hidden=!enabled;$('viewport').classList.toggle('comparing',enabled);$('lensing').disabled=enabled;dirty=true;
+ if(enabled&&state.pathView)setPathView(false);state.compare=enabled;$('compareView').checked=enabled;$('compareViewBtn').setAttribute('aria-pressed',String(enabled));$('compareViewBtn').textContent=enabled?'◫ Single view':'◫ Compare lensing';$('comparisonLabels').hidden=!enabled;$('viewport').classList.toggle('comparing',enabled);$('lensing').disabled=enabled;dirty=true;
 }
 $('compareViewBtn').addEventListener('click',()=>setComparison(!state.compare));$('compareView').addEventListener('change',()=>setComparison($('compareView').checked));
 $('pathViewBtn').addEventListener('click',()=>setPathView(!state.pathView));$('pathView').addEventListener('change',()=>setPathView($('pathView').checked));
 for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugRs','rs'],['debugPhoton','photon'],['debugGrid','grid'],['debugFrustum','frustum'],['debugOverlay','overlay']])$(id).addEventListener('change',()=>{debug[key]=$(id).checked;$('debugLegend').hidden=!state.pathView&&!debug.overlay;dirty=true;});
 $('rayDensity').addEventListener('change',()=>{debug.density=+$('rayDensity').value;dirty=true;});
+const diagnosticDescriptions={1:['RAY INTEGRATION STEPS','0 steps → selected step budget'],2:['CLOSEST APPROACH','12M+ (blue) → 0M (red)'],3:['NET DIRECTION CHANGE','0° (blue) → 180° (red)'],4:['DISK CROSSINGS','None · 1 cyan · 2 amber · 3+ pink'],5:['RAY TERMINATION','Escape teal · horizon black · core purple · cube yellow · budget red']};
+function updateDiagnosticUI(){
+ const info=diagnosticDescriptions[state.diagnostic];$('diagnosticLegend').hidden=!info;if(info){$('diagnosticTitle').textContent=info[0];$('diagnosticScale').textContent=info[1];$('diagnosticRamp').hidden=state.diagnostic>3;}
+ $('probePanel').hidden=!state.probe;if(!state.probe)$('probeMarker').hidden=true;dirty=true;
+}
+$('diagnosticMode').addEventListener('change',()=>{state.diagnostic=+$('diagnosticMode').value;if(state.diagnostic)setPathView(false);updateDiagnosticUI();});
+$('rayProbe').addEventListener('change',()=>{state.probe=$('rayProbe').checked;if(state.probe)setPathView(false);updateDiagnosticUI();});
+$('closeProbeBtn').addEventListener('click',()=>{state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();});
 function setModel(blackhole){
  stopFall(false);state.blackhole=blackhole;$('nakedModelBtn').classList.toggle('active',!blackhole);$('blackholeModelBtn').classList.toggle('active',blackhole);$('nakedModelBtn').setAttribute('aria-pressed',String(!blackhole));$('blackholeModelBtn').setAttribute('aria-pressed',String(blackhole));
- $('charge').disabled=blackhole;$('charge').closest('.control-section').classList.toggle('blackhole-model',blackhole);$('metricTitle').textContent=blackhole?'SCHWARZSCHILD SPACETIME':'REISSNER–NORDSTRÖM SPACETIME';$('modelStatus').textContent=blackhole?'SCHWARZSCHILD BLACK HOLE':'NAKED SINGULARITY';$('viewDescription').innerHTML=blackhole?'An event horizon. A one-way boundary.<br>Follow the light to the point of no return.':'A singularity. No event horizon.<br>A different way to see the universe.';
+ $('charge').disabled=blackhole;$('charge').closest('.control-section').classList.toggle('blackhole-model',blackhole);$('modelStatus').textContent=blackhole?'SCHWARZSCHILD BLACK HOLE':'NAKED SINGULARITY';
  $('horizonReadout').innerHTML=blackhole?`${(2*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';$('rsHelp').textContent=blackhole?'Event horizon of the Schwarzschild black hole':'Reference only; not a horizon for Q > M';$('diskRadius').min=blackhole?'7':'4';if(blackhole)state.diskRadius=Math.max(7,state.diskRadius);syncParams();
 }
 $('nakedModelBtn').addEventListener('click',()=>setModel(false));$('blackholeModelBtn').addEventListener('click',()=>setModel(true));
@@ -68,7 +78,7 @@ function syncParams(){
 }
 for(const id of ['mass','charge','brightness','diskRadius','skyRotation','fov','exposure'])$(id).addEventListener('input',()=>{state[id]=+$(id).value;syncParams();if(id==='mass'||id==='charge')document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));});
 for(const id of ['disk','lensing','autoOrbit'])$(id).addEventListener('change',()=>{state[id]=$(id).checked;syncParams();});
-$('diskUV').addEventListener('change',()=>{state.diskUV=$('diskUV').checked;if(state.diskUV){state.disk=true;setPathView(false);setUVReferenceFace(false);}syncParams();});
+$('diskUV').addEventListener('change',()=>{state.diskUV=$('diskUV').checked;if(state.diskUV){state.diagnostic=0;$('diagnosticMode').value='0';updateDiagnosticUI();state.disk=true;setPathView(false);setUVReferenceFace(false);}syncParams();});
 $('diskUVRotate').addEventListener('change',()=>{state.diskUVRotate=$('diskUVRotate').checked;dirty=true;});
 $('uvTopBtn').addEventListener('click',()=>setUVReferenceFace(false));$('uvBottomBtn').addEventListener('click',()=>setUVReferenceFace(true));
 function setUVReferenceFace(bottom){drawDiskUVReference($('diskUVReference'),bottom);$('uvTopBtn').classList.toggle('active',!bottom);$('uvBottomBtn').classList.toggle('active',bottom);$('uvTopBtn').setAttribute('aria-pressed',String(!bottom));$('uvBottomBtn').setAttribute('aria-pressed',String(bottom));}
@@ -85,7 +95,7 @@ $('pauseBtn').addEventListener('click',togglePause);
 $('panelBtn').addEventListener('click',()=>{document.body.classList.toggle('panel-hidden');dirty=true;});
 $('mapToggle').addEventListener('click',()=>{const collapsed=$('observerMap').classList.toggle('collapsed');$('mapToggle').textContent=collapsed?'+':'−';$('mapToggle').setAttribute('aria-expanded',String(!collapsed));$('mapToggle').setAttribute('aria-label',`${collapsed?'Expand':'Collapse'} camera overview`);dirty=true;});
 $('fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if($('viewport').requestFullscreen)await $('viewport').requestFullscreen();else{document.body.classList.toggle('panel-hidden');toast('Expanded view');}dirty=true;}catch{toast('Fullscreen is unavailable in this browser.');}});
-$('screenshotBtn').addEventListener('click',()=>{if(!renderer)return;renderScene();canvas.toBlob(blob=>{if(!blob){toast('Could not capture this frame.');return;}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`singularity-${Date.now()}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Observation saved as PNG');});});
+$('screenshotBtn').addEventListener('click',()=>{if(!renderer)return;renderScene();canvas.toBlob(blob=>{if(!blob){toast('Could not capture this frame.');return;}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`singularity-${Date.now()}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Screenshot saved as PNG');});});
 $('aboutBtn').addEventListener('click',()=>$('aboutDialog').showModal());$('closeAboutBtn').addEventListener('click',()=>$('aboutDialog').close());$('aboutDialog').addEventListener('click',e=>{if(e.target===$('aboutDialog')){const r=$('aboutDialog').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('aboutDialog').close();}});
 
 canvas.addEventListener('pointerdown',e=>{canvas.focus({preventScroll:true});canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});});
@@ -101,6 +111,22 @@ for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addE
 function zoom(delta){if(state.pathView)inspection.distance=Math.max(8,Math.min(120,inspection.distance*Math.exp(delta*.001)));else if(view.mode==='orbit')view.distance=Math.max(state.blackhole?2.025*state.mass:2.8,Math.min(65,view.distance*Math.exp(delta*.001)));else{const b=basis();view.position=add(view.position,mul(b.forward,-delta*.012));}dirty=true;}
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY);},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
+let lastProbe=0,probePoint=null;
+function updateProbe(point){
+ if(!state.probe||state.pathView||!point)return;
+ const rect=canvas.getBoundingClientRect(),x=point.x,y=point.y;if(x<0||y<0||x>rect.width||y>rect.height)return;
+ const ray=inspectPixelRay(state,basis(),{x,y,width:rect.width,height:rect.height}),hit=ray.firstHit;
+ $('probeView').textContent=`${ray.lensing?'LENSING ON':'LENSING OFF'} · CPU REFERENCE`;
+ $('probeHit').textContent=hit?.kind==='disk'?`${hit.face} ${hit.label}`:hit?.kind==='cube'?`Cube ${String(hit.id).padStart(2,'0')}`:'No disk / cube hit';
+ $('probeUV').textContent=hit?.kind==='disk'?`${hit.u.toFixed(3)} / ${hit.v.toFixed(3)}`:'—';
+ $('probeRadius').textContent=hit?.kind==='disk'?`${hit.radius.toFixed(3)} M`:'—';
+ $('probeClosest').textContent=`${(ray.minRadius/state.mass).toFixed(3)} M`;
+ $('probeOutcome').textContent=ray.status;$('probeCrossings').textContent=String(ray.crossings);$('probeSteps').textContent=String(ray.iterations);
+ $('probeEnergy').textContent=ray.lensing?`${(ray.maxError*100).toFixed(4)} %`:'N/A · straight rays';
+ $('probeMarker').hidden=false;$('probeMarker').style.left=`${x}px`;$('probeMarker').style.top=`${y}px`;
+}
+canvas.addEventListener('pointermove',e=>{probePoint={x:e.clientX-canvas.getBoundingClientRect().left,y:e.clientY-canvas.getBoundingClientRect().top};const now=performance.now();if(state.probe&&now-lastProbe>90){lastProbe=now;updateProbe(probePoint);}});
+canvas.addEventListener('pointerleave',()=>{$('probeMarker').hidden=true;probePoint=null;});
 function isEditing(e){return /INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName)||$('aboutDialog').open;}
 window.addEventListener('keydown',e=>{if(isEditing(e))return;const key=e.key.toLowerCase();if(['w','a','s','d','q','e','shift','arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)){e.preventDefault();keys.add(key);}if(e.repeat)return;if(key===' ')togglePause();if(key==='f')resetCamera();if(key==='c')addCube();});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();pointers.clear();});
@@ -272,7 +298,7 @@ function renderScene(){
   if(state.compare){const [w,h]=size,left=Math.floor(w/2),aspect=canvas.clientWidth/canvas.clientHeight/2;renderer.gl.viewport(0,0,left,h);geometry.render({...state,lensing:true},b,debug,b,{aspect});renderer.gl.viewport(left,0,w-left,h);geometry.render({...state,lensing:false},b,debug,b,{aspect});renderer.gl.viewport(0,0,w,h);}
   else geometry.render(state,b,debug,b);
  }}
- drawOverview(b);return {b,size};
+ drawOverview(b);if(state.probe&&performance.now()-lastProbe>150){lastProbe=performance.now();updateProbe(probePoint);}return {b,size};
 }
 let firstFrame=true;
 function frame(now){

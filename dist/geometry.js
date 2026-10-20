@@ -8,9 +8,9 @@ export function traceRay(camera,direction,mass,charge,{lensing=true,step=.035,ma
  let v=lensing?add(direction,mul(radial,dot(direction,radial)*(Math.sqrt(Math.max(f,.0001))-1))):[...direction];
  const angular=cross(p,v),L2=dot(angular,angular),Q2=charge*charge*mass*mass,points=[[...p]],cutoff=(charge===0?2.0001:.035)*mass;
  const acceleration=x=>{const r=Math.max(len(x),.00001*mass);return lensing?mul(x,(-3*mass+2*Q2/r)*L2/Math.pow(r,5)):[0,0,0];};
- let status='budget',maxError=0;const initialEnergy=dot(p,v)**2/(r0*r0)+f*L2/(r0*r0);
+ let status='budget',maxError=0,minRadius=r0,iterations=0;const initialEnergy=dot(p,v)**2/(r0*r0)+f*L2/(r0*r0);
  for(let i=0;i<maxSteps;i++){
-  const r=len(p);if(r<cutoff){status=charge===0?'horizon':'core';break;}
+  const r=len(p);minRadius=Math.min(minRadius,r);iterations=i+1;if(r<cutoff){status=charge===0?'horizon':'core';break;}
   if(r>Math.max(55,r0+35)&&dot(p,v)>0){status='escaped';break;}
   const a=acceleration(p),h=Math.min(Math.max(r*step,.00003*mass)/Math.max(len(v),1),Math.sqrt(.015*r/(len(a)+1e-20)),1.4);
   const next=add(add(p,mul(v,h)),mul(a,.5*h*h));const nv=add(v,mul(add(a,acceleration(next)),h*.5));
@@ -18,7 +18,7 @@ export function traceRay(camera,direction,mass,charge,{lensing=true,step=.035,ma
   p=next;v=nv;if(i%2===0)points.push([...p]);
   if(lensing){const nr=len(p),energy=Math.pow(dot(p,v)/nr,2)+(1-2*mass/nr+Q2/(nr*nr))*L2/(nr*nr);maxError=Math.max(maxError,Math.abs(energy-initialEnergy)/(initialEnergy||1));}
  }
- if(len(sub(p,points.at(-1)))>1e-10)points.push([...p]);return {points,status,maxError};
+ if(len(sub(p,points.at(-1)))>1e-10)points.push([...p]);return {points,status,maxError,minRadius,iterations};
 }
 
 export class GeometryRenderer{
