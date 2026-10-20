@@ -61,8 +61,8 @@ export class GeometryRenderer{
   }
   this.count=vertices.length/7;const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
  }
- render(state,observer,debug,view,{clear=false}={}){
-  const gl=this.gl,aspect=gl.canvas.clientWidth/gl.canvas.clientHeight;this.build(state,observer,debug,aspect);
+ render(state,observer,debug,view,{clear=false,aspect=this.gl.canvas.clientWidth/this.gl.canvas.clientHeight}={}){
+  const gl=this.gl;this.build(state,observer,debug,aspect);
   if(clear){gl.clearColor(.025,.034,.032,1);gl.clear(gl.COLOR_BUFFER_BIT);}
   gl.useProgram(this.program);gl.bindVertexArray(this.vao);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   gl.uniform3fv(this.uniforms.eye,view.camera);for(const n of ['right','up','forward'])gl.uniform3fv(this.uniforms[n],view[n]);gl.uniform1f(this.uniforms.tanFov,Math.tan((clear?52:state.fov)*Math.PI/360));gl.uniform1f(this.uniforms.aspect,aspect);gl.uniform1i(this.uniforms.pointMode,0);gl.drawArrays(gl.LINES,0,this.count);

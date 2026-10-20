@@ -1,3 +1,4 @@
+import {createDiskUVTexture} from './disk-uv.js';
 // Geometric units: G = c = 1. The spatial affine-parameter equation is
 // x'' = (-3 M / r^5 + 2 Q^2 / r^6) |x × x'|^2 x.
 // It follows from r'^2 = E^2 - (1 - 2M/r + Q^2/r^2) L^2/r^2.
@@ -13,11 +14,11 @@ out vec4 fragColor;
 uniform vec2 resolution;
 uniform vec3 camera,forward,right,up;
 uniform float fov,mass,charge,time,exposure,brightness,diskRadius,skyRotation;
-uniform bool disk,lensing,blackhole,nasaReady;
+uniform bool disk,lensing,blackhole,nasaReady,diskUV,diskUVRotate;
 uniform int skyMode,steps,cubeCount;
 uniform vec4 cubes[8];
 uniform vec3 colors[8];
-uniform sampler2D skyTexture;
+uniform sampler2D skyTexture,diskUVTexture;
 const float PI=3.14159265359;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
@@ -52,6 +53,7 @@ vec3 cubeUV(vec3 d){
  st=clamp(st*.5+.5,vec2(.001),vec2(.999));return texture(skyTexture,vec2((face+st.x)/6.,st.y)).rgb;
 }
 vec3 environment(vec3 d){
+ if(skyMode==5)return vec3(.0015,.002,.0025);
  float cs=cos(skyRotation),sn=sin(skyRotation);d=vec3(cs*d.x-sn*d.z,d.y,sn*d.x+cs*d.z);
  if(skyMode==0){if(nasaReady)return pow(texture(skyTexture,sphereUV(d)).rgb,vec3(2.2))*1.8;return night(d);}if(skyMode==2)return voxel(d);if(skyMode==3)return pow(texture(skyTexture,sphereUV(d)).rgb,vec3(2.2));return pow(cubeUV(d),vec3(2.2));
 }
@@ -90,7 +92,7 @@ void main(){
    vec3 n,hit;if(intersectCube(p,sd,segmentLength,cubes[j],n,hit)){float dist=distance(p,hit);if(dist<best){best=dist;cubeHit=hit;cubeNormal=n;cubeColor=colors[j];hitCube=true;}}
   }
   float diskT=1e10;vec3 dp=vec3(0);
-  if(disk&&p.y*next.y<=0.&&abs(segment.y)>1e-8){float t=-p.y/segment.y;dp=p+segment*t;float dr=length(dp.xz)/mass;if(dr>2.15&&dr<diskRadius)diskT=t*segmentLength;}
+  if(disk&&p.y*next.y<=0.&&abs(segment.y)>1e-8){float t=-p.y/segment.y;dp=p+segment*t;float dr=length(dp.xz)/mass;if(dr>(blackhole?6.:2.15)&&dr<diskRadius)diskT=t*segmentLength;}
   if(diskT<best){
    float inner=blackhole?6.:2.15;
    float dr=length(dp.xz)/mass,ang=atan(dp.z,dp.x);float profile=pow(inner/dr,1.65)*smoothstep(inner,inner+.45,dr)*(1.-smoothstep(diskRadius-1.5,diskRadius,dr));
@@ -98,6 +100,16 @@ void main(){
    // this is an illustrative angular rate, not an accretion dynamics model.
    float omega=1.35*pow(inner/max(dr,inner),1.5);
    float phase=ang-time*omega;
+   if(diskUV){
+    float u=fract((diskUVRotate?phase:ang)/(2.*PI)+.5);
+    float v=clamp((dr-inner)/(diskRadius-inner),.001,.999);
+    // An opaque first-hit diagnostic makes every repeated image identifiable,
+    // without superimposed disk layers or Doppler tint obscuring cell labels.
+    bool topFace=sd.y<0.;
+    float atlasV=(v+(topFace?0.:1.))*.5;
+    finalCol=pow(texture(diskUVTexture,vec2(u,atlasV)).rgb,vec3(2.2))*1.5;
+    emission=vec3(0);transmittance=1.;finished=true;break;
+   }
    float spiral=phase*3.+dr*1.35;
    float rings=.62+.24*sin(dr*23.+sin(spiral)*2.);
    // Circular coordinates keep turbulence continuous across the angular seam.
@@ -107,6 +119,7 @@ void main(){
    float doppler=clamp(1.+.48*dot(sd,normalize(vec3(-dp.z,0,dp.x)))*sqrt(3./dr),.3,1.8);
    float intensity=profile*(rings*swirl+.55*ribbons)*brightness*doppler*2.7;
    vec3 hot=mix(vec3(1.,.19,.035),vec3(1.,.78,.42),clamp(pow(inner/dr,.75),0.,1.));
+   if(sd.y>0.)hot=mix(vec3(.045,.19,1.),vec3(.30,.85,1.),clamp(pow(inner/dr,.75),0.,1.));
    emission+=transmittance*hot*intensity;transmittance*=exp(-intensity*.52);
   }
   if(hitCube){
@@ -136,8 +149,9 @@ export class Renderer {
     if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
     gl.useProgram(this.program);this.vao=gl.createVertexArray();gl.bindVertexArray(this.vao);const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
     const loc=gl.getAttribLocation(this.program,'position');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-    this.uniforms={};for(const name of ['resolution','camera','forward','right','up','fov','mass','charge','time','exposure','brightness','diskRadius','skyRotation','disk','lensing','blackhole','nasaReady','skyMode','steps','cubeCount','cubes[0]','colors[0]','skyTexture'])this.uniforms[name]=gl.getUniformLocation(this.program,name);
+    this.uniforms={};for(const name of ['resolution','camera','forward','right','up','fov','mass','charge','time','exposure','brightness','diskRadius','skyRotation','disk','lensing','blackhole','nasaReady','diskUV','diskUVRotate','skyMode','steps','cubeCount','cubes[0]','colors[0]','skyTexture','diskUVTexture'])this.uniforms[name]=gl.getUniformLocation(this.program,name);
     this.texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([20,20,20,255]));
+    this.diskTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.diskTexture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,createDiskUVTexture());gl.generateMipmap(gl.TEXTURE_2D);
   }
   upload(image){const gl=this.gl;gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);if(gl.getError()!==gl.NO_ERROR)throw new Error('The GPU could not load this image. Try a smaller image.');}
   render(state,basis){
@@ -149,9 +163,14 @@ export class Renderer {
     for(const name of ['mass','time','exposure','brightness','diskRadius'])gl.uniform1f(u[name],state[name]);
     gl.uniform1f(u.charge,state.blackhole?0:state.charge);gl.uniform1i(u.blackhole,state.blackhole?1:0);gl.uniform1i(u.nasaReady,state.nasaReady?1:0);
     gl.uniform1f(u.fov,state.fov*Math.PI/180);gl.uniform1f(u.skyRotation,state.skyRotation*Math.PI/180);
-    gl.uniform1i(u.disk,state.disk?1:0);gl.uniform1i(u.lensing,state.lensing?1:0);gl.uniform1i(u.skyMode,state.skyMode);gl.uniform1i(u.steps,steps);gl.uniform1i(u.cubeCount,state.cubes.length);
+    gl.uniform1i(u.disk,state.disk?1:0);gl.uniform1i(u.diskUV,state.diskUV?1:0);gl.uniform1i(u.diskUVRotate,state.diskUVRotate?1:0);gl.uniform1i(u.lensing,state.lensing?1:0);gl.uniform1i(u.skyMode,state.skyMode);gl.uniform1i(u.steps,steps);gl.uniform1i(u.cubeCount,state.cubes.length);
     if(state.cubes.length){gl.uniform4fv(u['cubes[0]'],new Float32Array(state.cubes.flatMap(c=>[...c.position,c.size])));gl.uniform3fv(u['colors[0]'],new Float32Array(state.cubes.flatMap(c=>c.color.match(/\w\w/g).map(v=>Math.pow(parseInt(v,16)/255,2.2)))));}
-    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.uniform1i(u.skyTexture,0);gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.diskTexture);gl.uniform1i(u.diskUVTexture,1);
+    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.uniform1i(u.skyTexture,0);
+    if(state.compare){
+      const left=Math.floor(w/2);gl.viewport(0,0,left,h);gl.uniform2f(u.resolution,left,h);gl.uniform1i(u.lensing,1);gl.drawArrays(gl.TRIANGLES,0,3);
+      gl.viewport(left,0,w-left,h);gl.uniform2f(u.resolution,w-left,h);gl.uniform1i(u.lensing,0);gl.drawArrays(gl.TRIANGLES,0,3);gl.viewport(0,0,w,h);
+    }else{gl.viewport(0,0,w,h);gl.drawArrays(gl.TRIANGLES,0,3);}
     return [w,h];
   }
 }

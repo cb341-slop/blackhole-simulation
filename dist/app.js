@@ -1,15 +1,16 @@
 import {Renderer} from './renderer.js';
 import {GeometryRenderer} from './geometry.js';
+import {drawDiskUVReference} from './disk-uv.js';
 
 const $=id=>document.getElementById(id);
 const canvas=$('universe');
-const state={mass:1,charge:1.03,blackhole:false,pathView:false,nasaReady:false,disk:true,brightness:1.5,diskRadius:9,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
-const debug={rays:true,center:true,rs:false,photon:false,grid:true,frustum:true,overlay:false,density:5};
+const state={mass:1,charge:1.03,blackhole:true,pathView:false,compare:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.5,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
+const debug={rays:false,center:false,rs:false,photon:false,grid:false,frustum:false,overlay:false,density:5};
 const inspection={theta:.92,phi:1.06,distance:47,target:[0,0,3]};
 const view={mode:'orbit',theta:.38,phi:1.30,distance:17,target:[0,0,0],position:[0,0,17],yaw:0,pitch:0};
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,s)=>a.map(v=>v*s),length=a=>Math.hypot(...a),norm=a=>mul(a,1/(length(a)||1));
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
-let renderer,geometry,dirty=true,selected=-1,nextCubeId=1,last=performance.now(),frames=0,frameTime=0,toastTimer,uploadSource=null,uploadMode=3,uvAtlas=null,nasaImage=null,nasaLoadId=0,fall=null;
+let renderer,geometry,dirty=true,selected=-1,nextCubeId=1,last=performance.now(),frames=0,frameTime=0,toastTimer,uploadSource=null,uploadMode=3,uvAtlas=null,nasaImage=null,nasaLoadId=0,fall=null,pathViewInitialized=false;
 const pointers=new Map(),keys=new Set();
 
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3600);}
@@ -23,7 +24,14 @@ function basis(){
  const right=norm(cross(forward,[0,1,0])),up=norm(cross(right,forward));return {camera,forward,right,up};
 }
 function inspectionBasis(){const {theta,phi,distance,target}=inspection;const camera=add(target,[distance*Math.sin(phi)*Math.sin(theta),distance*Math.cos(phi),distance*Math.sin(phi)*Math.cos(theta)]),forward=norm(sub(target,camera)),right=norm(cross(forward,[0,1,0]));return {camera,forward,right,up:norm(cross(right,forward))};}
-function setPathView(enabled){state.pathView=enabled;$('pathView').checked=enabled;$('pathViewBtn').setAttribute('aria-pressed',String(enabled));$('pathViewBtn').textContent=enabled?'◉ Return to observer image ↗':'⌁ Explore light paths ↗';$('debugLegend').hidden=!enabled&&!debug.overlay;$('canvasHint').innerHTML=enabled?'<span>⌁</span> Drag to inspect rays <b>·</b> Scroll to zoom <b>·</b> WASD moves observer':'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move';dirty=true;}
+function setPathView(enabled){
+ state.pathView=enabled;if(enabled){setComparison(false);if(!pathViewInitialized){for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugGrid','grid'],['debugFrustum','frustum']]){debug[key]=true;$(id).checked=true;}pathViewInitialized=true;}}
+ $('pathView').checked=enabled;$('pathViewBtn').setAttribute('aria-pressed',String(enabled));$('pathViewBtn').textContent=enabled?'◉ Return to observer image ↗':'⌁ Explore light paths ↗';$('debugLegend').hidden=!enabled&&!debug.overlay;$('canvasHint').innerHTML=enabled?'<span>⌁</span> Drag to inspect rays <b>·</b> Scroll to zoom <b>·</b> WASD moves observer':'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move';dirty=true;
+}
+function setComparison(enabled){
+ if(enabled&&state.pathView)setPathView(false);state.compare=enabled;$('compareView').checked=enabled;$('compareViewBtn').setAttribute('aria-pressed',String(enabled));$('compareViewBtn').textContent=enabled?'◫ Single image':'◫ Compare lensing';$('comparisonLabels').hidden=!enabled;$('viewport').classList.toggle('comparing',enabled);$('lensing').disabled=enabled;dirty=true;
+}
+$('compareViewBtn').addEventListener('click',()=>setComparison(!state.compare));$('compareView').addEventListener('change',()=>setComparison($('compareView').checked));
 $('pathViewBtn').addEventListener('click',()=>setPathView(!state.pathView));$('pathView').addEventListener('change',()=>setPathView($('pathView').checked));
 for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugRs','rs'],['debugPhoton','photon'],['debugGrid','grid'],['debugFrustum','frustum'],['debugOverlay','overlay']])$(id).addEventListener('change',()=>{debug[key]=$(id).checked;$('debugLegend').hidden=!state.pathView&&!debug.overlay;dirty=true;});
 $('rayDensity').addEventListener('change',()=>{debug.density=+$('rayDensity').value;dirty=true;});
@@ -54,14 +62,20 @@ function syncParams(){
  $('photonNote').textContent=state.blackhole?'Photon sphere at 3M · event horizon at 2M':state.charge<=Math.sqrt(9/8)?'Photon sphere present · no event horizon':'No photon sphere · no event horizon';
  $('horizonReadout').innerHTML=state.blackhole?`${(2*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';
  if(state.blackhole)$('chargeVal').textContent='0.000';
+ $('diskUV').checked=state.diskUV;$('diskUVRotate').checked=state.diskUVRotate;$('diskUVKey').hidden=!state.diskUV;
+ $('diskUVBounds').textContent=`V 0 → ${(state.blackhole?6:2.15).toFixed(2)} M  ·  V 1 → ${state.diskRadius.toFixed(2)} M`;
  dirty=true;
 }
 for(const id of ['mass','charge','brightness','diskRadius','skyRotation','fov','exposure'])$(id).addEventListener('input',()=>{state[id]=+$(id).value;syncParams();if(id==='mass'||id==='charge')document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));});
 for(const id of ['disk','lensing','autoOrbit'])$(id).addEventListener('change',()=>{state[id]=$(id).checked;syncParams();});
+$('diskUV').addEventListener('change',()=>{state.diskUV=$('diskUV').checked;if(state.diskUV){state.disk=true;setPathView(false);setUVReferenceFace(false);}syncParams();});
+$('diskUVRotate').addEventListener('change',()=>{state.diskUVRotate=$('diskUVRotate').checked;dirty=true;});
+$('uvTopBtn').addEventListener('click',()=>setUVReferenceFace(false));$('uvBottomBtn').addEventListener('click',()=>setUVReferenceFace(true));
+function setUVReferenceFace(bottom){drawDiskUVReference($('diskUVReference'),bottom);$('uvTopBtn').classList.toggle('active',!bottom);$('uvBottomBtn').classList.toggle('active',bottom);$('uvTopBtn').setAttribute('aria-pressed',String(!bottom));$('uvBottomBtn').setAttribute('aria-pressed',String(bottom));}
 $('quality').addEventListener('change',()=>{state.quality=$('quality').value;dirty=true;});
-function preset(name){Object.assign(state,{mass:1,charge:1.03,disk:true,brightness:1.5,diskRadius:9,lensing:true});if(name==='repulsive'){state.charge=1.35;state.diskRadius=7;}if(name==='clear')state.disk=false;document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active',b.dataset.preset===name));syncParams();}
+function preset(name){if(name==='classic'||name==='repulsive')setModel(false);Object.assign(state,{mass:1,charge:1.03,disk:true,brightness:1.5,diskRadius:14,lensing:true});if(name==='repulsive'){state.charge=1.35;}if(name==='clear')state.disk=false;document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active',b.dataset.preset===name));syncParams();}
 document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>preset(b.dataset.preset)));
-$('resetParamsBtn').addEventListener('click',()=>preset('classic'));
+$('resetParamsBtn').addEventListener('click',()=>{setModel(true);preset('default');});
 $('orbitBtn').addEventListener('click',()=>setMode('orbit'));
 $('flyBtn').addEventListener('click',()=>setMode('fly'));
 $('resetCameraBtn').addEventListener('click',()=>{stopFall(false);resetCamera();});
@@ -236,7 +250,7 @@ function drawOverview(b){
  if(state.disk){circle(state.diskRadius*state.mass,'xz','#d5aa6f55');circle(2.15*state.mass,'xz','#d5aa6f66');}
  const coreRadius=Math.max((state.blackhole?2:.9)*state.mass,extent*.06);circle(coreRadius,'xz','#d5aa6faa');circle(coreRadius,'xy','#d5aa6f99');circle(coreRadius,'yz','#d5aa6f77');
  for(const c of state.cubes){const corners=Array.from({length:8},(_,i)=>add(c.position,[(i&1?1:-1)*c.size/2,(i&2?1:-1)*c.size/2,(i&4?1:-1)*c.size/2]));for(let i=0;i<8;i++)for(let bit=1;bit<=4;bit*=2)if(!(i&bit))line(corners[i],corners[i|bit],c.color+'bb',.8);}
- const aspect=canvas.clientWidth/canvas.clientHeight,tan=Math.tan(state.fov*Math.PI/360),near=.65,far=Math.min(8,length(b.camera)*.65);
+ const aspect=canvas.clientWidth/canvas.clientHeight/(state.compare?2:1),tan=Math.tan(state.fov*Math.PI/360),near=.65,far=Math.min(8,length(b.camera)*.65);
  const plane=distance=>{const center=add(b.camera,mul(b.forward,distance));return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>add(center,add(mul(b.right,x*tan*distance*aspect),mul(b.up,y*tan*distance))));};
  const n=plane(near),f=plane(far);ctx.fillStyle='#e8b17b09';ctx.beginPath();f.forEach((p,i)=>{const q=project(p);if(i)ctx.lineTo(...q);else ctx.moveTo(...q);});ctx.closePath();ctx.fill();
  for(let i=0;i<4;i++){line(n[i],n[(i+1)%4],'#e8b17bcc',1);line(f[i],f[(i+1)%4],'#e8b17b88',.8);line(b.camera,f[i],'#e8b17b99',.8);}
@@ -253,8 +267,11 @@ function renderScene(){
   // Resize through the normal renderer once; the external view is then drawn
   // directly with GPU lines, and does not need to ray trace every pixel.
   const rect=canvas.getBoundingClientRect(),scale=state.quality==='high'?1:state.quality==='low'?.6:.85,ratio=Math.min(devicePixelRatio,1.5)*scale,w=Math.max(1,Math.floor(rect.width*ratio)),h=Math.max(1,Math.floor(rect.height*ratio));
-  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;renderer.gl.viewport(0,0,w,h);}size=[w,h];geometry.render(state,b,debug,inspectionBasis(),{clear:true});
- }else{size=renderer.render(state,b);if(debug.overlay)geometry.render(state,b,debug,b);}
+  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}renderer.gl.viewport(0,0,w,h);size=[w,h];geometry.render(state,b,debug,inspectionBasis(),{clear:true});
+ }else{size=renderer.render(state,b);if(debug.overlay){
+  if(state.compare){const [w,h]=size,left=Math.floor(w/2),aspect=canvas.clientWidth/canvas.clientHeight/2;renderer.gl.viewport(0,0,left,h);geometry.render({...state,lensing:true},b,debug,b,{aspect});renderer.gl.viewport(left,0,w-left,h);geometry.render({...state,lensing:false},b,debug,b,{aspect});renderer.gl.viewport(0,0,w,h);}
+  else geometry.render(state,b,debug,b);
+ }}
  drawOverview(b);return {b,size};
 }
 let firstFrame=true;
@@ -273,4 +290,4 @@ function frame(now){
 }
 new ResizeObserver(()=>dirty=true).observe($('viewport'));
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fail(new Error('The GPU context was interrupted. Reload this page to resume the experiment.'));});
-try{renderer=new Renderer(canvas);geometry=new GeometryRenderer(renderer.gl);uvAtlas=createUVAtlas();syncParams();syncCubes();syncPause();loadNASA();requestAnimationFrame(frame);}catch(error){fail(error);}
+try{renderer=new Renderer(canvas);geometry=new GeometryRenderer(renderer.gl);uvAtlas=createUVAtlas();setModel(true);syncCubes();syncPause();loadNASA();requestAnimationFrame(frame);}catch(error){fail(error);}
