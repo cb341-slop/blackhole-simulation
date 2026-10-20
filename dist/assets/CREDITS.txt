@@ -1,0 +1,16 @@
+NASA night-sky imagery
+
+Deep Star Maps (2012), Ernie Wright.
+Credit: NASA/Goddard Space Flight Center Scientific Visualization Studio.
+Source: https://svs.gsfc.nasa.gov/3895/
+
+Original, unmodified equirectangular JPEG panoramas:
+starmap_8k.jpg — 8192 × 4096
+starmap_16k.jpg — 16384 × 8192
+
+Source files:
+https://svs.gsfc.nasa.gov/vis/a000000/a003800/a003895/starmap_8k.jpg
+https://svs.gsfc.nasa.gov/vis/a000000/a003800/a003895/starmap_16k.jpg
+
+The built-in UV-cube and voxel skies are generated locally by this application.
+User-uploaded skyboxes remain in browser memory and are never uploaded by this app.
