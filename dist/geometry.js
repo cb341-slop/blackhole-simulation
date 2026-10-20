@@ -1,9 +1,12 @@
+import {traceKerrRay,horizonRadius} from './kerr.js?v=6';
+import {iscoRadius,photonRadius} from './orbits.js?v=6';
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,k)=>a.map(v=>v*k),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),len=a=>Math.hypot(...a),norm=a=>mul(a,1/(len(a)||1));
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 
 // Coordinate-space null geodesic, integrated independently of display projection.
 // Starting velocity is constructed from the static observer's orthonormal frame.
-export function traceRay(camera,direction,mass,charge,{lensing=true,step=.035,maxSteps=2200}={}){
+export function traceRay(camera,direction,mass,charge,{lensing=true,step=.035,maxSteps=2200,spin=0}={}){
+ if(charge===0&&spin>0)return traceKerrRay(camera,direction,mass,spin,{lensing,step:step*.7,maxSteps:maxSteps*2});
  let p=[...camera];const radial=norm(p),r0=len(p),f=1-2*mass/r0+charge*charge*mass*mass/(r0*r0);
  let v=lensing?add(direction,mul(radial,dot(direction,radial)*(Math.sqrt(Math.max(f,.0001))-1))):[...direction];
  const angular=cross(p,v),L2=dot(angular,angular),Q2=charge*charge*mass*mass,points=[[...p]],cutoff=(charge===0?2.0001:.035)*mass;
@@ -33,7 +36,7 @@ export class GeometryRenderer{
   this.uniforms={};for(const n of ['eye','right','up','forward','tanFov','aspect','pointMode','pointSize'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
   this.pointVao=gl.createVertexArray();gl.bindVertexArray(this.pointVao);this.pointBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(c);gl.vertexAttribPointer(c,4,gl.FLOAT,false,28,12);
  }
- renderCustom({lines,points},view){
+ renderCustom({lines,points,pointSize=5},view){
   const gl=this.gl;
   // This shares the line buffer with the ray view; invalidate its cached mesh.
   this.key='';
@@ -41,7 +44,7 @@ export class GeometryRenderer{
   gl.useProgram(this.program);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   gl.uniform3fv(this.uniforms.eye,view.camera);for(const n of ['right','up','forward'])gl.uniform3fv(this.uniforms[n],view[n]);
   gl.uniform1f(this.uniforms.tanFov,Math.tan(52*Math.PI/360));gl.uniform1f(this.uniforms.aspect,gl.canvas.clientWidth/gl.canvas.clientHeight);
-  gl.uniform1f(this.uniforms.pointSize,Math.max(4,5*gl.canvas.width/gl.canvas.clientWidth));
+  gl.uniform1f(this.uniforms.pointSize,Math.max(4,pointSize*gl.canvas.width/gl.canvas.clientWidth));
   gl.bindVertexArray(this.vao);gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(lines),gl.DYNAMIC_DRAW);
   gl.uniform1i(this.uniforms.pointMode,0);gl.drawArrays(gl.LINES,0,lines.length/7);
   if(points.length){gl.bindVertexArray(this.pointVao);gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(points),gl.DYNAMIC_DRAW);gl.uniform1i(this.uniforms.pointMode,1);gl.drawArrays(gl.POINTS,0,points.length/7);}
@@ -49,7 +52,7 @@ export class GeometryRenderer{
  }
 
  build(state,b,debug,aspect){
-  const signature=JSON.stringify([state.mass,state.charge,state.blackhole,state.lensing,state.disk,state.diskRadius,state.fov,state.cubes,b,debug,aspect]);if(signature===this.key)return;this.key=signature;
+  const signature=JSON.stringify([state.mass,state.charge,state.spin,state.blackhole,state.lensing,state.disk,state.diskRadius,state.fov,state.cubes,b,debug,aspect]);if(signature===this.key)return;this.key=signature;
   const vertices=[],line=(a,c,color)=>{vertices.push(...a,...color,...c,...color);};
   const sphere=(radius,color)=>{
    if(radius<=0)return;
@@ -60,17 +63,21 @@ export class GeometryRenderer{
   };
   if(debug.grid){const extent=28;for(let i=-extent;i<=extent;i+=2){line([-extent,-.025,i],[extent,-.025,i],[.35,.44,.34,i===0?.3:.10]);line([i,-.025,-extent],[i,-.025,extent],[.35,.44,.34,i===0?.3:.10]);}line([0,0,0],[8,0,0],[.85,.38,.29,.7]);line([0,0,0],[0,8,0],[.55,.76,.43,.7]);line([0,0,0],[0,0,8],[.35,.57,.85,.7]);}
   if(debug.center){const d=.7*state.mass;for(const axis of [[d,0,0],[0,d,0],[0,0,d]])line(mul(axis,-1),axis,[1.,.9,.72,.95]);sphere(.17*state.mass,[1.,.84,.55,.8]);}
-  if(debug.rs)sphere(2*state.mass,[.93,.44,.30,.55]);
-  if(debug.photon){const q=state.blackhole?0:state.charge,disc=9-8*q*q;if(disc>=0){sphere((3+Math.sqrt(disc))*.5*state.mass,[.47,.75,.88,.5]);if(q>0)sphere((3-Math.sqrt(disc))*.5*state.mass,[.47,.75,.88,.25]);}}
-  if(state.disk)for(const r of [state.blackhole?6:2.15,state.diskRadius])for(let i=0;i<100;i++){const p=t=>[Math.cos(t/100*Math.PI*2)*r*state.mass,0,Math.sin(t/100*Math.PI*2)*r*state.mass];line(p(i),p(i+1),[.8,.55,.28,.35]);}
+  if(debug.rs){
+   if(state.blackhole&&state.spin>0){const r=horizonRadius(state.spin)*state.mass,rho=Math.sqrt(r*r+(state.spin*state.mass)**2);for(let row=0;row<9;row++)for(let i=0;i<96;i++){const point=t=>{const theta=row*Math.PI/8,phi=t*Math.PI/48;return [rho*Math.sin(theta)*Math.cos(phi),r*Math.cos(theta),rho*Math.sin(theta)*Math.sin(phi)];};line(point(i),point(i+1),[.93,.44,.30,.55]);}for(let j=0;j<16;j++)for(let i=0;i<64;i++){const point=t=>[rho*Math.sin(t*Math.PI/64)*Math.cos(j*Math.PI/8),r*Math.cos(t*Math.PI/64),rho*Math.sin(t*Math.PI/64)*Math.sin(j*Math.PI/8)];line(point(i),point(i+1),[.93,.44,.30,.55]);}}
+   else sphere(2*state.mass,[.93,.44,.30,.55]);
+  }
+  if(debug.photon&&state.blackhole&&state.spin>0){for(const direction of [-1,1]){const r=photonRadius(state.spin,direction),rho=Math.sqrt(r*r+state.spin*state.spin)*state.mass;for(let i=0;i<128;i++){const point=t=>[rho*Math.cos(t*Math.PI/64),0,rho*Math.sin(t*Math.PI/64)];line(point(i),point(i+1),[.47,.75,.88,.6]);}}}
+  else if(debug.photon){const q=state.blackhole?0:state.charge,disc=9-8*q*q;if(disc>=0){sphere((3+Math.sqrt(disc))*.5*state.mass,[.47,.75,.88,.5]);if(q>0)sphere((3-Math.sqrt(disc))*.5*state.mass,[.47,.75,.88,.25]);}}
+  if(state.disk)for(const r of [state.blackhole?iscoRadius(state.spin||0):2.15,state.diskRadius])for(let i=0;i<100;i++){const rho=Math.sqrt(r*r+(state.blackhole?(state.spin||0)**2:0))*state.mass,p=t=>[Math.cos(t/100*Math.PI*2)*rho,0,Math.sin(t/100*Math.PI*2)*rho];line(p(i),p(i+1),[.8,.55,.28,.35]);}
   if(debug.frustum){const tan=Math.tan(state.fov*Math.PI/360),planes=[.6,Math.min(9,len(b.camera)*.7)].map(distance=>{const center=add(b.camera,mul(b.forward,distance));return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>add(center,add(mul(b.right,x*tan*distance*aspect),mul(b.up,y*tan*distance))));});for(let i=0;i<4;i++){line(planes[0][i],planes[0][(i+1)%4],[.8,.85,.65,.9]);line(planes[1][i],planes[1][(i+1)%4],[.8,.85,.65,.2]);line(b.camera,planes[1][i],[.8,.85,.65,.25]);}const r=.2;for(const a of [b.right,b.up,b.forward])line(add(b.camera,mul(a,-r)),add(b.camera,mul(a,r)),[.95,.95,.75,1]);}
   for(const cube of state.cubes){const rgb=cube.color.match(/\w\w/g).map(v=>parseInt(v,16)/255),corners=Array.from({length:8},(_,i)=>add(cube.position,[(i&1?1:-1)*cube.size/2,(i&2?1:-1)*cube.size/2,(i&4?1:-1)*cube.size/2]));for(let i=0;i<8;i++)for(let bit=1;bit<=4;bit*=2)if(!(i&bit))line(corners[i],corners[i|bit],[...rgb,.8]);}
   if(debug.rays){
-   const traceKey=JSON.stringify([b,state.mass,state.charge,state.blackhole,state.lensing,state.fov,debug.density,aspect]);
+   const traceKey=JSON.stringify([b,state.mass,state.charge,state.spin,state.blackhole,state.lensing,state.fov,debug.density,aspect]);
    if(traceKey!==this.traceKey){this.traceKey=traceKey;this.paths=[];const n=debug.density,tan=Math.tan(state.fov*Math.PI/360);
     // A central bundle samples the observer's image plane; the frustum still
     // outlines the complete image. Rays are traced backwards from the eye.
-    for(let y=0;y<n;y++)for(let x=0;x<n;x++){const sx=(x/(n-1)*2-1)*.48,sy=(y/(n-1)*2-1)*.34;const direction=norm(add(b.forward,add(mul(b.right,sx*tan*aspect),mul(b.up,sy*tan))));const ray=traceRay(b.camera,direction,state.mass,state.blackhole?0:state.charge,{lensing:state.lensing});this.paths.push({...ray,central:x===(n-1)/2&&y===(n-1)/2});}
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++){const sx=(x/(n-1)*2-1)*.48,sy=(y/(n-1)*2-1)*.34;const direction=norm(add(b.forward,add(mul(b.right,sx*tan*aspect),mul(b.up,sy*tan))));const ray=traceRay(b.camera,direction,state.mass,state.blackhole?0:state.charge,{lensing:state.lensing,spin:state.blackhole?state.spin:0});this.paths.push({...ray,central:x===(n-1)/2&&y===(n-1)/2});}
    }
    for(const path of this.paths)for(let i=0;i<path.points.length-1;i++){const radius=len(path.points[i])/state.mass,heat=Math.exp(-radius*.13);const color=path.central?[1.,.9,.55,.95]:[.30+.65*heat,.78-.25*heat,.82-.62*heat,.30+.5*heat];line(path.points[i],path.points[i+1],color);}
   }

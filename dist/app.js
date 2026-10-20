@@ -1,19 +1,23 @@
-import {Renderer} from './renderer.js';
-import {GeometryRenderer} from './geometry.js';
-import {drawDiskUVReference} from './disk-uv.js';
-import {inspectPixelRay} from './ray-inspector.js';
-import {curvatureGeometry,tidalGeometry,tidalState} from './physics.js';
+import {Renderer} from './renderer.js?v=6';
+import {GeometryRenderer} from './geometry.js?v=6';
+import {drawDiskUVReference} from './disk-uv.js?v=6';
+import {inspectPixelRay} from './ray-inspector.js?v=6';
+import {curvatureGeometry,tidalGeometry,tidalState} from './physics.js?v=6';
+import {horizonRadius,kerrRadius} from './kerr.js?v=6';
+import {iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy} from './orbits.js?v=6';
+import {drawHorizonUVReference} from './horizon-uv.js?v=6';
 
 const $=id=>document.getElementById(id);
 const canvas=$('universe');
-const state={mass:1,charge:1.03,blackhole:true,physicsView:'none',curvatureScale:1,curvatureDensity:28,curvatureFlat:false,tidalProgress:0,tidalPlaying:true,tidalSize:1,tidalArrows:true,tidalGhost:true,pathView:false,compare:false,diagnostic:0,probe:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.5,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
+const state={mass:1,charge:1.03,blackhole:true,spin:0,horizonUV:false,horizonUVRotate:false,orbitRadius:4,orbitMomentum:1,orbitSpeed:12,orbitPlaying:true,orbitDirection:1,orbitTrail:true,orbitReference:true,physicsView:'none',curvatureScale:1,curvatureDensity:28,curvatureFlat:false,tidalProgress:0,tidalPlaying:true,tidalSize:1,tidalArrows:true,tidalGhost:true,pathView:false,compare:false,diagnostic:0,probe:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.5,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
 const debug={rays:false,center:false,rs:false,photon:false,grid:false,frustum:false,overlay:false,density:5};
 const inspection={theta:.92,phi:1.06,distance:47,target:[0,0,3]};
 const view={mode:'orbit',theta:.38,phi:1.30,distance:17,target:[0,0,0],position:[0,0,17],yaw:0,pitch:0};
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,s)=>a.map(v=>v*s),length=a=>Math.hypot(...a),norm=a=>mul(a,1/(length(a)||1));
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 let renderer,geometry,dirty=true,selected=-1,nextCubeId=1,last=performance.now(),frames=0,frameTime=0,toastTimer,uploadSource=null,uploadMode=3,uvAtlas=null,nasaImage=null,nasaLoadId=0,fall=null,pathViewInitialized=false;
-let curvatureCache=null,curvatureCacheKey='';
+let curvatureCache=null,curvatureCacheKey='',horizonKeyReady=false;
+let orbit=createOrbit(8,0);
 const pointers=new Map(),keys=new Set();
 
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3600);}
@@ -29,21 +33,23 @@ function basis(){
 function inspectionBasis(){const {theta,phi,distance,target}=inspection;const camera=add(target,[distance*Math.sin(phi)*Math.sin(theta),distance*Math.cos(phi),distance*Math.sin(phi)*Math.cos(theta)]),forward=norm(sub(target,camera)),right=norm(cross(forward,[0,1,0]));return {camera,forward,right,up:norm(cross(right,forward))};}
 function resetPhysicsCamera(){
  const m=state.mass;
- Object.assign(inspection,state.physicsView==='curvature'?{theta:.68,phi:1.05,distance:52*m,target:[0,-5*m,0]}:{theta:.38,phi:1.15,distance:29*m,target:[9*m,0,0]});
+ Object.assign(inspection,state.physicsView==='curvature'?{theta:.68,phi:1.05,distance:52*m,target:[0,-5*m,0]}:state.physicsView==='orbit'?{theta:.13,phi:.85,distance:Math.max(16,state.orbitRadius*7.4)*m,target:[-state.orbitRadius*.5*m,0,0]}:{theta:.38,phi:1.15,distance:29*m,target:[9*m,0,0]});
  dirty=true;
 }
 function syncPhysicsUI(){
  const mode=state.physicsView,active=mode!=='none';
- $('physicsView').value=mode;$('viewport').classList.toggle('physics-mode',active);
+ $('physicsView').value=mode;$('orbitViewBtn').setAttribute('aria-pressed',String(mode==='orbit'));$('orbitControls').hidden=mode!=='orbit';$('orbitHUD').hidden=mode!=='orbit';$('viewport').classList.toggle('physics-mode',active);
  $('curvatureViewBtn').setAttribute('aria-pressed',String(mode==='curvature'));$('tidalViewBtn').setAttribute('aria-pressed',String(mode==='tidal'));
  $('physicsHUD').hidden=!active;$('curvatureControls').hidden=mode!=='curvature';$('tidalControls').hidden=mode!=='tidal';
  $('curvatureKey').hidden=mode!=='curvature';$('tidalReadouts').hidden=mode!=='tidal';$('tidalHUDControls').hidden=mode!=='tidal';
  $('orbitBtn').disabled=active;$('flyBtn').disabled=active;
- $('distanceLabel').textContent=mode==='curvature'?'VIEW DISTANCE':mode==='tidal'?'CLOUD CENTRE RADIUS':'OBSERVER DISTANCE';
+ $('distanceLabel').textContent=mode==='curvature'?'VIEW DISTANCE':mode==='tidal'?'CLOUD CENTRE RADIUS':mode==='orbit'?'ORBIT RADIUS':'OBSERVER DISTANCE';
  if(mode==='curvature'){
   $('physicsTitle').textContent='SPATIAL CURVATURE · SCHWARZSCHILD';
   $('physicsDescription').textContent=`Equatorial spatial slice · 2M ≤ r ≤ 20M · vertical scale ${state.curvatureScale.toFixed(1)}×`;
   $('physicsNote').textContent=state.curvatureScale===1?'Exact spatial embedding. Height is an extra diagram coordinate, not a fall direction.':state.curvatureScale===0?'Flattened reference. Vertical scale 0 removes the displayed curvature.':'Vertical scale changed for display. Scale 1 preserves the spatial metric.';
+ }else if(mode==='orbit'){
+  $('physicsTitle').textContent='ORBITS · SPIN & STABILITY';$('physicsDescription').textContent=`Equatorial ${state.spin>0?'Kerr':'Schwarzschild'} geodesic · χ = ${state.spin.toFixed(2)} · rₛ = 2M`;syncOrbitUI();$('physicsNote').textContent='Oblate coordinate diagram. Drag / zoom to inspect; horizon shape is coordinate dependent.';
  }else if(mode==='tidal'){
   const t=tidalState(state.tidalProgress);
   $('physicsTitle').textContent='SPAGHETTIFICATION · FREE-FALLING GRID';
@@ -58,7 +64,7 @@ function syncPhysicsUI(){
 }
 function setPhysicsView(mode){
  if(mode!=='none'){
-  stopFall(false);if(!state.blackhole)setModel(true);setPathView(false);setComparison(false);
+  stopFall(false);if(mode==='curvature'||mode==='tidal'){state.spin=0;syncParams();}if(!state.blackhole)setModel(true);setPathView(false);setComparison(false);
   state.diagnostic=0;$('diagnosticMode').value='0';state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();
  }
  state.physicsView=mode;syncPhysicsUI();
@@ -71,7 +77,7 @@ function setPhysicsView(mode){
  dirty=true;
 }
 $('physicsView').addEventListener('change',()=>setPhysicsView($('physicsView').value));
-for(const mode of ['curvature','tidal'])$(mode+'ViewBtn').addEventListener('click',()=>setPhysicsView(state.physicsView===mode?'none':mode));
+for(const mode of ['curvature','tidal','orbit'])$(mode+'ViewBtn').addEventListener('click',()=>setPhysicsView(state.physicsView===mode?'none':mode));
 for(const id of ['curvatureScale','tidalSize'])$(id).addEventListener('input',()=>{state[id]=+$(id).value;syncPhysicsUI();});
 $('curvatureDensity').addEventListener('change',()=>{state.curvatureDensity=+$('curvatureDensity').value;dirty=true;});
 for(const id of ['curvatureFlat','tidalArrows','tidalGhost'])$(id).addEventListener('change',()=>{state[id]=$(id).checked;syncPhysicsUI();});
@@ -80,6 +86,39 @@ function replayTides(){state.tidalProgress=0;state.tidalPlaying=true;state.pause
 for(const id of ['tidalReplayBtn','tidalHUDReplay'])$(id).addEventListener('click',replayTides);
 for(const id of ['tidalPlayBtn','tidalHUDPlay'])$(id).addEventListener('click',()=>{if(state.tidalProgress>=1){replayTides();return;}if(state.paused){state.paused=false;state.tidalPlaying=true;syncPause();}else state.tidalPlaying=!state.tidalPlaying;syncPhysicsUI();});
 function updateTides(dt){if(state.physicsView!=='tidal'||state.paused||!state.tidalPlaying)return;state.tidalProgress=Math.min(1,state.tidalProgress+dt/16);if(state.tidalProgress>=1)state.tidalPlaying=false;syncPhysicsUI();}
+function resetOrbit(){orbit=createOrbit(state.orbitRadius*2,state.spin,state.orbitDirection,state.orbitMomentum);state.orbitPlaying=true;dirty=true;}
+function syncOrbitUI(){
+ const c=orbit.circular;
+ $('orbitClassification').textContent=c.classification;
+ $('orbitClassification').classList.toggle('unstable',c.valid&&c.classification.startsWith('Unstable'));
+ $('orbitClassification').classList.toggle('invalid',!c.valid);
+ $('orbitStatus').textContent=c.valid?`${orbit.status==='running'?'Proper time τ = '+orbit.tau.toFixed(1)+' M':orbit.status} · start ${state.orbitRadius.toFixed(2)}rₛ`:c.classification.startsWith('Horizon')?'The selected radius is at or inside the horizon.':`Massive circular orbits require r > ${(c.photon/2).toFixed(3)}rₛ in this direction.`;
+ $('orbitCurrentR').textContent=(orbit.y[0]/2).toFixed(3);$('orbitISCO').textContent=(c.isco/2).toFixed(3);$('orbitPhoton').textContent=(c.photon/2).toFixed(3);$('orbitEnergy').textContent=c.valid?orbit.E.toFixed(6):'—';$('orbitL').textContent=c.valid?orbit.L.toFixed(5):'—';$('orbitError').textContent=c.valid?orbit.maxError.toExponential(1):'—';
+ $('orbitPlayBtn').disabled=!c.valid;$('orbitPlayBtn').textContent=orbit.status!=='running'?'↺ Replay':state.orbitPlaying&&!state.paused?'Ⅱ Pause orbit':'▷ Continue orbit';
+ for(const id of ['orbitKickIn','orbitKickOut'])$(id).disabled=!c.valid||orbit.status!=='running';
+ for(const id of ['orbitRadius','orbitMomentum','orbitSpeed']){$(id).value=state[id];updateSlider(id);$(id+'Val').textContent=state[id].toFixed(id==='orbitSpeed'?0:2);}
+ $('orbitDirection').value=String(state.orbitDirection);
+ document.querySelectorAll('[data-orbit-radius]').forEach(b=>b.classList.toggle('active',Math.abs(+b.dataset.orbitRadius-state.orbitRadius)<.001));
+}
+function selectOrbitRadius(radius){state.orbitRadius=radius;state.orbitMomentum=1;resetOrbit();if(state.physicsView!=='orbit')setPhysicsView('orbit');else{resetPhysicsCamera();syncPhysicsUI();}}
+for(const button of document.querySelectorAll('[data-orbit-radius]'))button.addEventListener('click',()=>selectOrbitRadius(+button.dataset.orbitRadius));
+$('orbitISCOPreset').addEventListener('click',()=>selectOrbitRadius(iscoRadius(state.spin,state.orbitDirection)/2));
+for(const id of ['orbitRadius','orbitMomentum','orbitSpeed'])$(id).addEventListener('input',()=>{state[id]=+$(id).value;if(id!=='orbitSpeed')resetOrbit();if(id==='orbitRadius')resetPhysicsCamera();syncPhysicsUI();});
+$('orbitDirection').addEventListener('change',()=>{state.orbitDirection=+$('orbitDirection').value;resetOrbit();syncPhysicsUI();});
+for(const id of ['orbitTrail','orbitReference'])$(id).addEventListener('change',()=>{state[id]=$(id).checked;dirty=true;});
+function replayOrbit(){resetOrbit();state.paused=false;syncPause();syncPhysicsUI();}
+$('orbitReplayBtn').addEventListener('click',replayOrbit);
+$('orbitPlayBtn').addEventListener('click',()=>{if(orbit.status!=='running'){replayOrbit();return;}if(state.paused){state.paused=false;state.orbitPlaying=true;syncPause();}else state.orbitPlaying=!state.orbitPlaying;syncPhysicsUI();});
+for(const [id,sign] of [['orbitKickIn',-1],['orbitKickOut',1]])$(id).addEventListener('click',()=>{if(!orbit.circular.valid||orbit.status!=='running')return;orbit.y[1]=sign*.01;orbit.E=orbitEnergy(orbit.y[0],orbit.L,orbit.spin,orbit.y[1]);orbit.maxError=0;state.orbitPlaying=true;state.paused=false;syncPause();syncPhysicsUI();});
+function updateOrbit(dt){if(state.physicsView!=='orbit'||state.paused||!state.orbitPlaying||orbit.status!=='running')return;advanceOrbit(orbit,dt*state.orbitSpeed);syncPhysicsUI();}
+function applySpin(value){
+ state.spin=Math.max(0,Math.min(.98,value));stopFall(false);
+ if(state.physicsView==='curvature'||state.physicsView==='tidal')setPhysicsView('none');
+ if(!state.blackhole)setModel(true);resetOrbit();syncParams();syncPhysicsUI();
+}
+$('spin').addEventListener('input',()=>applySpin(+$('spin').value));
+$('horizonUV').addEventListener('change',()=>{state.horizonUV=$('horizonUV').checked;if(state.horizonUV){if(!state.blackhole)setModel(true);if(state.physicsView!=='none')setPhysicsView('none');setPathView(false);state.diagnostic=0;$('diagnosticMode').value='0';updateDiagnosticUI();}syncParams();});
+$('horizonUVRotate').addEventListener('change',()=>{state.horizonUVRotate=$('horizonUVRotate').checked;dirty=true;});
 function setPathView(enabled){
  if(enabled&&state.physicsView!=='none')setPhysicsView('none');
  if(enabled){state.diagnostic=0;$('diagnosticMode').value='0';state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();}
@@ -105,13 +144,13 @@ $('closeProbeBtn').addEventListener('click',()=>{state.probe=false;$('rayProbe')
 function setModel(blackhole){
  if(!blackhole&&state.physicsView!=='none')setPhysicsView('none');
  stopFall(false);state.blackhole=blackhole;$('nakedModelBtn').classList.toggle('active',!blackhole);$('blackholeModelBtn').classList.toggle('active',blackhole);$('nakedModelBtn').setAttribute('aria-pressed',String(!blackhole));$('blackholeModelBtn').setAttribute('aria-pressed',String(blackhole));
- $('charge').disabled=blackhole;$('charge').closest('.control-section').classList.toggle('blackhole-model',blackhole);$('modelStatus').textContent=blackhole?'SCHWARZSCHILD BLACK HOLE':'NAKED SINGULARITY';
- $('horizonReadout').innerHTML=blackhole?`${(2*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';$('rsHelp').textContent=blackhole?'Event horizon of the Schwarzschild black hole':'Reference only; not a horizon for Q > M';$('diskRadius').min=blackhole?'7':'4';if(blackhole)state.diskRadius=Math.max(7,state.diskRadius);syncParams();
+ $('charge').disabled=blackhole;$('charge').closest('.control-section').classList.toggle('blackhole-model',blackhole);$('modelStatus').textContent=blackhole?(state.spin>0?'KERR BLACK HOLE':'SCHWARZSCHILD BLACK HOLE'):'NAKED SINGULARITY';
+ $('horizonReadout').innerHTML=blackhole?`${(horizonRadius(state.spin)*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';$('rsHelp').textContent=blackhole?'Event horizon of the Schwarzschild black hole':'Reference only; not a horizon for Q > M';$('diskRadius').min=blackhole?'7':'4';if(blackhole)state.diskRadius=Math.max(7,state.diskRadius);syncParams();
 }
 $('nakedModelBtn').addEventListener('click',()=>setModel(false));$('blackholeModelBtn').addEventListener('click',()=>setModel(true));
 function startFall(){
  if(state.physicsView!=='none')setPhysicsView('none');
- setModel(true);setPathView(false);resetCamera();view.distance=18*state.mass;view.phi=1.39;view.theta=.1;state.paused=false;state.autoOrbit=false;$('autoOrbit').checked=false;syncPause();fall={elapsed:0,duration:14,start:18*state.mass};$('fallOverlay').hidden=false;$('fallBtn').textContent='↓ Descent in progress…';$('fallBtn').disabled=true;dirty=true;
+ state.spin=0;setModel(true);setPathView(false);resetCamera();view.distance=18*state.mass;view.phi=1.39;view.theta=.1;state.paused=false;state.autoOrbit=false;$('autoOrbit').checked=false;syncPause();fall={elapsed:0,duration:14,start:18*state.mass};$('fallOverlay').hidden=false;$('fallBtn').textContent='↓ Descent in progress…';$('fallBtn').disabled=true;dirty=true;
 }
 function stopFall(reset=true){fall=null;$('fallOverlay').hidden=true;$('horizonFade').style.opacity=0;$('fallBtn').innerHTML='↓ Fall into a black hole <span>PLAY ANIMATION</span>';$('fallBtn').disabled=false;if(reset)resetCamera();dirty=true;}
 function updateFall(dt){if(!fall||state.paused)return;fall.elapsed+=dt;const t=Math.min(fall.elapsed/fall.duration,1),r0=fall.start,end=2.025*state.mass;view.distance=Math.pow(Math.pow(r0,1.5)+(Math.pow(end,1.5)-Math.pow(r0,1.5))*t,2/3);view.theta=.1+t*.08;$('fallProgress').style.width=`${t*100}%`;$('fallStatus').textContent=t<.96?`Approaching the horizon · r / 2M = ${(view.distance/(2*state.mass)).toFixed(2)}`:'Horizon reached · observation ends';$('horizonFade').style.opacity=Math.max(0,(t-.94)/.06);dirty=true;if(t>=1){state.paused=true;syncPause();fall=null;$('fallStatus').textContent='Horizon reached · observation ends';$('fallBtn').innerHTML='↺ Replay the descent';$('fallBtn').disabled=false;}}
@@ -126,16 +165,23 @@ function setMode(mode){
 function resetCamera(){if(state.physicsView!=='none'){resetPhysicsCamera();return;}view.mode='fly';setMode('orbit');Object.assign(view,{theta:.38,phi:1.30,distance:17,target:[0,0,0]});Object.assign(inspection,{theta:.92,phi:1.06,distance:47,target:[0,0,3]});dirty=true;}
 function updateSlider(id){const el=$(id);el.style.setProperty('--fill',`${100*(+el.value-+el.min)/(+el.max-+el.min)}%`);}
 function syncParams(){
+ $('spin').value=state.spin;$('spin').disabled=!state.blackhole;updateSlider('spin');$('spinVal').textContent=state.spin.toFixed(2);
+ const rh=horizonRadius(state.spin),rho=Math.sqrt(rh*rh+state.spin*state.spin);
+ $('spinNote').textContent=state.blackhole?`χ = Jc / GM² · spin axis +Y · r₊ = ${rh.toFixed(3)}M · polar/equatorial coordinate ratio ${(rh/rho).toFixed(3)}`:'Spin is available in black-hole mode.';
+ $('modelStatus').textContent=state.blackhole?(state.spin>0?'KERR BLACK HOLE':'SCHWARZSCHILD BLACK HOLE'):'NAKED SINGULARITY';
+ $('horizonUV').checked=state.horizonUV;$('horizonUV').disabled=!state.blackhole;$('horizonUVKey').hidden=!state.blackhole||!state.horizonUV;$('horizonUVRotate').checked=state.horizonUVRotate;
+ if(state.horizonUV&&!horizonKeyReady){drawHorizonUVReference($('horizonUVReference'));horizonKeyReady=true;}
+ $('horizonDebugLabel').textContent=state.blackhole&&state.spin>0?'Kerr horizon · r₊':'Schwarzschild radius · 2M';$('rsHelp').textContent=state.blackhole?(state.spin>0?'Oblate coordinate horizon; blue rings mark equatorial photon radii.':'Event horizon of the Schwarzschild black hole'):'Reference only; not a horizon for Q > M';
  for(const id of ['mass','charge','brightness','diskRadius','skyRotation','fov','exposure']){const el=$(id);el.value=state[id];updateSlider(id);const digits={mass:2,charge:3,brightness:1,diskRadius:1,exposure:1};$(id+'Val').textContent=state[id].toFixed(digits[id]??0);}
  for(const id of ['disk','lensing','autoOrbit'])$(id).checked=state[id];$('quality').value=state.quality;$('diskControls').style.opacity=state.disk?'1':'.35';
- $('photonNote').textContent=state.blackhole?'Photon sphere at 3M · event horizon at 2M':state.charge<=Math.sqrt(9/8)?'Photon sphere present · no event horizon':'No photon sphere · no event horizon';
- $('horizonReadout').innerHTML=state.blackhole?`${(2*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';
+ $('photonNote').textContent=state.blackhole?(state.spin>0?`Prograde ISCO ${iscoRadius(state.spin).toFixed(2)}M · horizon ${rh.toFixed(2)}M`:'Photon sphere at 3M · event horizon at 2M'):state.charge<=Math.sqrt(9/8)?'Photon sphere present · no event horizon':'No photon sphere · no event horizon';
+ $('horizonReadout').innerHTML=state.blackhole?`${(horizonRadius(state.spin)*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';
  if(state.blackhole)$('chargeVal').textContent='0.000';
  $('diskUV').checked=state.diskUV;$('diskUVRotate').checked=state.diskUVRotate;$('diskUVKey').hidden=!state.diskUV;
- $('diskUVBounds').textContent=`V 0 → ${(state.blackhole?6:2.15).toFixed(2)} M  ·  V 1 → ${state.diskRadius.toFixed(2)} M`;
+ $('diskUVBounds').textContent=`V 0 → ${(state.blackhole?iscoRadius(state.spin):2.15).toFixed(2)} M  ·  V 1 → ${state.diskRadius.toFixed(2)} M`;
  dirty=true;
 }
-for(const id of ['mass','charge','brightness','diskRadius','skyRotation','fov','exposure'])$(id).addEventListener('input',()=>{if(id==='mass'&&state.physicsView!=='none'){const ratio=+$(id).value/state.mass;inspection.distance*=ratio;inspection.target=mul(inspection.target,ratio);}state[id]=+$(id).value;syncParams();if(id==='mass'||id==='charge')document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));});
+for(const id of ['mass','charge','brightness','diskRadius','skyRotation','fov','exposure'])$(id).addEventListener('input',()=>{if(id==='mass'&&state.physicsView!=='none'){const ratio=+$(id).value/state.mass;inspection.distance*=ratio;inspection.target=mul(inspection.target,ratio);}state[id]=+$(id).value;syncParams();if(state.physicsView!=='none')syncPhysicsUI();if(id==='mass'||id==='charge')document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));});
 for(const id of ['disk','lensing','autoOrbit'])$(id).addEventListener('change',()=>{state[id]=$(id).checked;syncParams();});
 $('diskUV').addEventListener('change',()=>{state.diskUV=$('diskUV').checked;if(state.diskUV){if(state.physicsView!=='none')setPhysicsView('none');state.diagnostic=0;$('diagnosticMode').value='0';updateDiagnosticUI();state.disk=true;setPathView(false);setUVReferenceFace(false);}syncParams();});
 $('diskUVRotate').addEventListener('change',()=>{state.diskUVRotate=$('diskUVRotate').checked;dirty=true;});
@@ -144,7 +190,7 @@ function setUVReferenceFace(bottom){drawDiskUVReference($('diskUVReference'),bot
 $('quality').addEventListener('change',()=>{state.quality=$('quality').value;dirty=true;});
 function preset(name){if(name==='classic'||name==='repulsive')setModel(false);Object.assign(state,{mass:1,charge:1.03,disk:true,brightness:1.5,diskRadius:14,lensing:true});if(name==='repulsive'){state.charge=1.35;}if(name==='clear')state.disk=false;document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active',b.dataset.preset===name));syncParams();}
 document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>preset(b.dataset.preset)));
-$('resetParamsBtn').addEventListener('click',()=>{setModel(true);preset('default');});
+$('resetParamsBtn').addEventListener('click',()=>{state.spin=0;resetOrbit();setModel(true);preset('default');});
 $('orbitBtn').addEventListener('click',()=>setMode('orbit'));
 $('flyBtn').addEventListener('click',()=>setMode('fly'));
 $('resetCameraBtn').addEventListener('click',()=>{stopFall(false);resetCamera();});
@@ -176,12 +222,12 @@ function updateProbe(point){
  const rect=canvas.getBoundingClientRect(),x=point.x,y=point.y;if(x<0||y<0||x>rect.width||y>rect.height)return;
  const ray=inspectPixelRay(state,basis(),{x,y,width:rect.width,height:rect.height}),hit=ray.firstHit;
  $('probeView').textContent=`${ray.lensing?'LENSING ON':'LENSING OFF'} · CPU REFERENCE`;
- $('probeHit').textContent=hit?.kind==='disk'?`${hit.face} ${hit.label}`:hit?.kind==='cube'?`Cube ${String(hit.id).padStart(2,'0')}`:'No disk / cube hit';
- $('probeUV').textContent=hit?.kind==='disk'?`${hit.u.toFixed(3)} / ${hit.v.toFixed(3)}`:'—';
- $('probeRadius').textContent=hit?.kind==='disk'?`${hit.radius.toFixed(3)} M`:'—';
+ $('probeHit').textContent=hit?.kind==='disk'?`${hit.face} ${hit.label}`:hit?.kind==='cube'?`Cube ${String(hit.id).padStart(2,'0')}`:hit?.kind==='horizon'?`HORIZON ${hit.label}`:'No disk / cube hit';
+ $('probeUV').textContent=(hit?.kind==='disk'||hit?.kind==='horizon')?`${hit.u.toFixed(3)} / ${hit.v.toFixed(3)}`:'—';
+ $('probeRadius').textContent=(hit?.kind==='disk'||hit?.kind==='horizon')?`${hit.radius.toFixed(3)} M`:'—';
  $('probeClosest').textContent=`${(ray.minRadius/state.mass).toFixed(3)} M`;
  $('probeOutcome').textContent=ray.status;$('probeCrossings').textContent=String(ray.crossings);$('probeSteps').textContent=String(ray.iterations);
- $('probeEnergy').textContent=ray.lensing?`${(ray.maxError*100).toFixed(4)} %`:'N/A · straight rays';
+ $('probeErrorLabel').textContent=state.blackhole&&state.spin>0?'Null constraint |2ℋ|':'Max energy drift';$('probeEnergy').textContent=ray.lensing?(state.blackhole&&state.spin>0?ray.maxError.toExponential(2):`${(ray.maxError*100).toFixed(4)} %`):'N/A · straight rays';
  $('probeMarker').hidden=false;$('probeMarker').style.left=`${x}px`;$('probeMarker').style.top=`${y}px`;
 }
 canvas.addEventListener('pointermove',e=>{probePoint={x:e.clientX-canvas.getBoundingClientRect().left,y:e.clientY-canvas.getBoundingClientRect().top};const now=performance.now();if(state.probe&&now-lastProbe>90){lastProbe=now;updateProbe(probePoint);}});
@@ -333,8 +379,8 @@ function drawOverview(b){
  const grid=extent*.85;for(let i=-2;i<=2;i++){const v=i*grid/2;line([-grid,0,v],[grid,0,v],'#6f805026',.6);line([v,0,-grid],[v,0,grid],'#6f805026',.6);}
  const axis=extent*.8;line([0,0,0],[axis,0,0],'#ba8f6d88',.8);line([0,0,0],[0,axis,0],'#9ab58a88',.8);line([0,0,0],[0,0,axis],'#8ba1b688',.8);label([axis,0,0],'X','#ba8f6d');label([0,axis,0],'Y','#9ab58a');label([0,0,axis],'Z','#8ba1b6');
  const circle=(radius,plane,color)=>{let previous;for(let i=0;i<=64;i++){const a=i/64*Math.PI*2;const p=plane==='xz'?[Math.cos(a)*radius,0,Math.sin(a)*radius]:plane==='xy'?[Math.cos(a)*radius,Math.sin(a)*radius,0]:[0,Math.cos(a)*radius,Math.sin(a)*radius];if(previous)line(previous,p,color,.65);previous=p;}};
- if(state.disk){circle(state.diskRadius*state.mass,'xz','#d5aa6f55');circle(2.15*state.mass,'xz','#d5aa6f66');}
- const coreRadius=Math.max((state.blackhole?2:.9)*state.mass,extent*.06);circle(coreRadius,'xz','#d5aa6faa');circle(coreRadius,'xy','#d5aa6f99');circle(coreRadius,'yz','#d5aa6f77');
+ if(state.disk){circle(state.diskRadius*state.mass,'xz','#d5aa6f55');circle((state.blackhole?Math.sqrt(iscoRadius(state.spin)**2+state.spin**2):2.15)*state.mass,'xz','#d5aa6f66');}
+ const coreRadius=Math.max((state.blackhole?horizonRadius(state.spin):.9)*state.mass,extent*.06);circle(coreRadius,'xz','#d5aa6faa');circle(coreRadius,'xy','#d5aa6f99');circle(coreRadius,'yz','#d5aa6f77');
  for(const c of state.cubes){const corners=Array.from({length:8},(_,i)=>add(c.position,[(i&1?1:-1)*c.size/2,(i&2?1:-1)*c.size/2,(i&4?1:-1)*c.size/2]));for(let i=0;i<8;i++)for(let bit=1;bit<=4;bit*=2)if(!(i&bit))line(corners[i],corners[i|bit],c.color+'bb',.8);}
  const aspect=canvas.clientWidth/canvas.clientHeight/(state.compare?2:1),tan=Math.tan(state.fov*Math.PI/360),near=.65,far=Math.min(8,length(b.camera)*.65);
  const plane=distance=>{const center=add(b.camera,mul(b.forward,distance));return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>add(center,add(mul(b.right,x*tan*distance*aspect),mul(b.up,y*tan*distance))));};
@@ -359,6 +405,7 @@ function renderScene(){
    if(key!==curvatureCacheKey){curvatureCacheKey=key;curvatureCache=curvatureGeometry(state);}
    geometry.renderCustom(curvatureCache,inspectionBasis());
   }else if(state.physicsView==='tidal')geometry.renderCustom(tidalGeometry(state),inspectionBasis());
+  else if(state.physicsView==='orbit')geometry.renderCustom(orbitGeometry(orbit,state),inspectionBasis());
   else geometry.render(state,b,debug,inspectionBasis(),{clear:true});
  }else{size=renderer.render(state,b);if(debug.overlay){
   if(state.compare){const [w,h]=size,left=Math.floor(w/2),aspect=canvas.clientWidth/canvas.clientHeight/2;renderer.gl.viewport(0,0,left,h);geometry.render({...state,lensing:true},b,debug,b,{aspect});renderer.gl.viewport(left,0,w-left,h);geometry.render({...state,lensing:false},b,debug,b,{aspect});renderer.gl.viewport(0,0,w,h);}
@@ -370,10 +417,10 @@ let firstFrame=true;
 function frame(now){
  const dt=Math.min((now-last)/1000,.06);last=now;
  if(document.hidden){requestAnimationFrame(frame);return;}
- updateFall(dt);updateTides(dt);if(!fall)moveCamera(dt);if(!state.paused)state.time+=dt;if(state.autoOrbit&&!state.paused&&(state.physicsView!=='none'||view.mode==='orbit')){if(state.physicsView!=='none')inspection.theta+=dt*.065;else view.theta+=dt*.065;dirty=true;}
- const animated=(!state.paused&&state.physicsView==='none'&&(state.disk||state.skyMode===0||state.pathView))||(!state.paused&&state.autoOrbit);
+ updateFall(dt);updateTides(dt);updateOrbit(dt);if(!fall)moveCamera(dt);if(!state.paused)state.time+=dt;if(state.autoOrbit&&!state.paused&&(state.physicsView!=='none'||view.mode==='orbit')){if(state.physicsView!=='none')inspection.theta+=dt*.065;else view.theta+=dt*.065;dirty=true;}
+ const animated=(!state.paused&&state.physicsView==='none'&&(state.disk||state.skyMode===0||state.pathView||(state.horizonUV&&state.horizonUVRotate)))||(!state.paused&&state.autoOrbit);
  if(dirty||animated){
-  try{const {b,size:[w,h]}=renderScene();$('distanceReadout').innerHTML=`${(state.physicsView==='curvature'?inspection.distance:state.physicsView==='tidal'?tidalState(state.tidalProgress).radius*state.mass:length(b.camera)).toFixed(1)} <small>GM/c²</small>`;$('resolution').textContent=`${w} × ${h} · ${state.physicsView==='curvature'?'CURVATURE':state.physicsView==='tidal'?'TIDAL GRID':state.pathView?'LIGHT PATHS':'WEBGL 2'}`;dirty=false;frames++;
+  try{const {b,size:[w,h]}=renderScene();$('distanceReadout').innerHTML=`${(state.physicsView==='curvature'?inspection.distance:state.physicsView==='tidal'?tidalState(state.tidalProgress).radius*state.mass:state.physicsView==='orbit'?orbit.y[0]*state.mass:length(b.camera)).toFixed(1)} <small>GM/c²</small>`;$('resolution').textContent=`${w} × ${h} · ${state.physicsView==='curvature'?'CURVATURE':state.physicsView==='tidal'?'TIDAL GRID':state.physicsView==='orbit'?(state.spin>0?'KERR ORBITS':'SCHWARZSCHILD ORBITS'):state.pathView?'LIGHT PATHS':'WEBGL 2'}`;dirty=false;frames++;
    if(firstFrame){$('loading').classList.add('done');firstFrame=false;}
   }catch(error){fail(error);return;}
  }

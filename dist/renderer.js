@@ -1,4 +1,7 @@
-import {createDiskUVTexture} from './disk-uv.js';
+import {createDiskUVTexture} from './disk-uv.js?v=6';
+import {createHorizonUVTexture} from './horizon-uv.js?v=6';
+import {kerrGLSL,horizonRadius} from './kerr.js?v=6';
+import {iscoRadius} from './orbits.js?v=6';
 // Geometric units: G = c = 1. The spatial affine-parameter equation is
 // x'' = (-3 M / r^5 + 2 Q^2 / r^6) |x × x'|^2 x.
 // It follows from r'^2 = E^2 - (1 - 2M/r + Q^2/r^2) L^2/r^2.
@@ -13,12 +16,12 @@ in vec2 uv;
 out vec4 fragColor;
 uniform vec2 resolution;
 uniform vec3 camera,forward,right,up;
-uniform float fov,mass,charge,time,exposure,brightness,diskRadius,skyRotation;
-uniform bool disk,lensing,blackhole,nasaReady,diskUV,diskUVRotate;
+uniform float fov,mass,charge,time,exposure,brightness,diskRadius,skyRotation,spin,horizonR,diskInner;
+uniform bool disk,lensing,blackhole,nasaReady,diskUV,diskUVRotate,horizonUV,horizonUVRotate;
 uniform int skyMode,steps,cubeCount,diagnostic;
 uniform vec4 cubes[8];
 uniform vec3 colors[8];
-uniform sampler2D skyTexture,diskUVTexture;
+uniform sampler2D skyTexture,diskUVTexture,horizonUVTexture;
 const float PI=3.14159265359;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
@@ -66,27 +69,42 @@ bool intersectCube(vec3 p,vec3 v,float segment,vec4 box,out vec3 normal,out vec3
  if(aq.x>aq.y&&aq.x>aq.z)normal=vec3(sign(q.x),0,0);else if(aq.y>aq.z)normal=vec3(0,sign(q.y),0);else normal=vec3(0,0,sign(q.z));return true;
 }
 vec3 acceleration(vec3 p,float L2,float Q2){float r=max(length(p),.025*mass);return p*((-3.*mass+2.*Q2/r)*L2/pow(r,5.));}
+${kerrGLSL}
 void main(){
  vec2 screen=(uv*2.-1.);screen.x*=resolution.x/resolution.y;
  vec3 dir=normalize(forward+(screen.x*right+screen.y*up)*tan(fov*.5));
  vec3 p=camera;float r0=length(p);vec3 radial=p/r0;float f=1.-2.*mass/r0+charge*charge*mass*mass/(r0*r0);
  vec3 v=dir+radial*dot(dir,radial)*(sqrt(max(f,.0001))-1.);
+ bool rotating=blackhole&&spin>.00001,curvedKerr=rotating&&lensing;float aK=-spin*mass;
+ vec3 momentum=curvedKerr?kerrInit(p,dir,aK):vec3(0);
+ if(curvedKerr){vec3 force;kerrFlow(p,momentum,aK,v,force);}
  vec3 initialDirection=lensing?normalize(v):dir;
  float L2=dot(cross(p,v),cross(p,v));float Q2=charge*charge*mass*mass;
  vec3 emission=vec3(0);float transmittance=1.;vec3 finalCol=vec3(0);bool finished=false;
- float minRadius=r0;int stepCount=0,crossingCount=0,fate=0;
- for(int i=0;i<384;i++){
+ float minRadius=r0;int stepCount=0,crossingCount=0,fate=0;vec2 horizonST=vec2(0);bool horizonHit=false;
+ for(int i=0;i<768;i++){
   if(i>=steps)break;
-  float r=length(p);minRadius=min(minRadius,r);stepCount=i+1;
-  if(r<(blackhole?2.0001:.035)*mass){fate=blackhole?2:3;finished=true;break;}
+  float r=rotating?kerrR(p,aK):length(p);
+  vec3 kerrForce=vec3(0);if(curvedKerr)kerrFlow(p,momentum,aK,v,kerrForce);
+  minRadius=min(minRadius,r);stepCount=i+1;
+  if(r<(blackhole?horizonR*1.0005:.035)*mass){
+   fate=blackhole?2:3;
+   if(blackhole&&horizonUV&&diagnostic==0){float angle=atan(-p.z,p.x)-(horizonUVRotate?time*spin/(2.*horizonR*mass):0.);horizonST=vec2(fract(angle/(2.*PI)+.5),acos(clamp(p.y/r,-1.,1.))/PI);horizonHit=true;}
+   finished=true;break;
+  }
   if(r>70.+r0&&dot(p,v)>0.){fate=1;if(diagnostic==0)finalCol=environment(normalize(v));finished=true;break;}
   float qualityStep=steps>300?.065:(steps>180?.10:.16);
-  float h=clamp(r*qualityStep,.004*mass,2.)/max(length(v),1.);
-  // Velocity Verlet: two force samples, with short adaptive steps near the core.
+  float h=clamp(r*qualityStep*(curvedKerr?.6:1.),.002*mass,2.*mass)/max(length(v),1.);
+  // Schwarzschild/RN use Verlet. Kerr uses fourth-order Hamiltonian steps.
   vec3 a=lensing?acceleration(p,L2,Q2):vec3(0);
   if(!lensing)v=dir;
   vec3 next=p+v*h+.5*a*h*h;
   vec3 nextV=v+.5*(a+(lensing?acceleration(next,L2,Q2):vec3(0)))*h;
+  if(curvedKerr){vec3 bx,bp,cx,cp,dx,dp;kerrFlow(p+.5*h*v,momentum+.5*h*kerrForce,aK,bx,bp);kerrFlow(p+.5*h*bx,momentum+.5*h*bp,aK,cx,cp);kerrFlow(p+h*cx,momentum+h*cp,aK,dx,dp);next=p+h*(v+2.*bx+2.*cx+dx)/6.;momentum+=h*(kerrForce+2.*bp+2.*cp+dp)/6.;nextV=dx;}
+  // Resolve horizon coordinates at the captured segment, rather than mapping a
+  // step-dependent interior point onto the debug texture.
+  if(blackhole&&(rotating?kerrR(next,aK):length(next))<horizonR*mass*1.0005){float lo=0.,hi=1.;for(int j=0;j<12;j++){float t=(lo+hi)*.5;vec3 q=mix(p,next,t);if((rotating?kerrR(q,aK):length(q))>horizonR*mass*1.00045)lo=t;else hi=t;}next=mix(p,next,hi);}
+
   vec3 segment=next-p;float segmentLength=length(segment);vec3 sd=segment/max(segmentLength,1e-8);
   float best=1e10;vec3 cubeHit=vec3(0),cubeNormal=vec3(0),cubeColor=vec3(0);bool hitCube=false;
   for(int j=0;j<8;j++){
@@ -95,15 +113,15 @@ void main(){
    vec3 n,hit;if(intersectCube(p,sd,segmentLength,cubes[j],n,hit)){float dist=distance(p,hit);if(dist<best){best=dist;cubeHit=hit;cubeNormal=n;cubeColor=colors[j];hitCube=true;}}
   }
   float diskT=1e10;vec3 dp=vec3(0);
-  if(disk&&((p.y>0.&&next.y<=0.)||(p.y<0.&&next.y>=0.))&&abs(segment.y)>1e-8){float t=-p.y/segment.y;dp=p+segment*t;float dr=length(dp.xz)/mass;if(dr>(blackhole?6.:2.15)&&dr<diskRadius)diskT=t*segmentLength;}
+  if(disk&&((p.y>0.&&next.y<=0.)||(p.y<0.&&next.y>=0.))&&abs(segment.y)>1e-8){float t=-p.y/segment.y;dp=p+segment*t;float dr=(rotating?sqrt(max(dot(dp.xz,dp.xz)-spin*spin*mass*mass,0.)):length(dp.xz))/mass;if(dr>(blackhole?diskInner:2.15)&&dr<diskRadius)diskT=t*segmentLength;}
   if(diskT<best){
    crossingCount++;
-   float inner=blackhole?6.:2.15;
-   float dr=length(dp.xz)/mass,ang=atan(dp.z,dp.x);float profile=pow(inner/dr,1.65)*smoothstep(inner,inner+.45,dr)*(1.-smoothstep(diskRadius-1.5,diskRadius,dr));
+   float inner=blackhole?diskInner:2.15;
+   float dr=(rotating?sqrt(max(dot(dp.xz,dp.xz)-spin*spin*mass*mass,0.)):length(dp.xz))/mass,ang=atan(dp.z,dp.x);float profile=pow(inner/dr,1.65)*smoothstep(inner,inner+.45,dr)*(1.-smoothstep(diskRadius-1.5,diskRadius,dr));
    // Advect every visible feature together. Inner material rotates faster;
    // this is an illustrative angular rate, not an accretion dynamics model.
    float omega=1.35*pow(inner/max(dr,inner),1.5);
-   float phase=ang-time*omega;
+   float phase=ang+(rotating?1.:-1.)*time*omega;
    if(diskUV&&diagnostic==0){
     float u=fract((diskUVRotate?phase:ang)/(2.*PI)+.5);
     float v=clamp((dr-inner)/(diskRadius-inner),.001,.999);
@@ -120,7 +138,7 @@ void main(){
    vec2 flow=vec2(cos(phase),sin(phase))*(4.+dr*.35);
    float swirl=.4+.75*noise(flow+vec2(dr*2.3));
    float ribbons=pow(.5+.5*cos(spiral),5.);
-   float doppler=clamp(1.+.48*dot(sd,normalize(vec3(-dp.z,0,dp.x)))*sqrt(3./dr),.3,1.8);
+   float doppler=clamp(1.+.48*dot(sd,(rotating?-1.:1.)*normalize(vec3(-dp.z,0,dp.x)))*sqrt(3./dr),.3,1.8);
    float intensity=profile*(rings*swirl+.55*ribbons)*brightness*doppler*2.7;
    vec3 hot=mix(vec3(1.,.19,.035),vec3(1.,.78,.42),clamp(pow(inner/dr,.75),0.,1.));
    if(sd.y>0.)hot=mix(vec3(.045,.19,1.),vec3(.30,.85,1.),clamp(pow(inner/dr,.75),0.,1.));
@@ -134,6 +152,10 @@ void main(){
   p=next;v=nextV;
   if(transmittance<.008&&diagnostic==0){finished=true;break;}
  }
+ // Sample after the divergent march: neighboring pixels can reach the horizon
+ // on different iterations, so implicit texture derivatives inside the loop
+ // would be undefined and produce unstable mip levels.
+ if(horizonUV){vec3 sampled=pow(texture(horizonUVTexture,horizonST).rgb,vec3(2.2))*1.5;if(horizonHit)finalCol=sampled;}
  if(diagnostic>0){
   vec3 debugColor=vec3(0);
   if(diagnostic==1)debugColor=heat(float(stepCount)/float(steps));
@@ -162,22 +184,26 @@ export class Renderer {
     if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
     gl.useProgram(this.program);this.vao=gl.createVertexArray();gl.bindVertexArray(this.vao);const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
     const loc=gl.getAttribLocation(this.program,'position');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-    this.uniforms={};for(const name of ['resolution','camera','forward','right','up','fov','mass','charge','time','exposure','brightness','diskRadius','skyRotation','disk','lensing','blackhole','nasaReady','diskUV','diskUVRotate','skyMode','steps','cubeCount','diagnostic','cubes[0]','colors[0]','skyTexture','diskUVTexture'])this.uniforms[name]=gl.getUniformLocation(this.program,name);
+    this.uniforms={};for(const name of ['resolution','camera','forward','right','up','fov','mass','charge','time','exposure','brightness','diskRadius','skyRotation','spin','horizonR','diskInner','horizonUV','horizonUVRotate','horizonUVTexture','disk','lensing','blackhole','nasaReady','diskUV','diskUVRotate','skyMode','steps','cubeCount','diagnostic','cubes[0]','colors[0]','skyTexture','diskUVTexture'])this.uniforms[name]=gl.getUniformLocation(this.program,name);
     this.texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([20,20,20,255]));
     this.diskTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.diskTexture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,createDiskUVTexture());gl.generateMipmap(gl.TEXTURE_2D);
+    this.horizonTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.horizonTexture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,createHorizonUVTexture());gl.generateMipmap(gl.TEXTURE_2D);
+
   }
   upload(image){const gl=this.gl;gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);if(gl.getError()!==gl.NO_ERROR)throw new Error('The GPU could not load this image. Try a smaller image.');}
   render(state,basis){
-    const gl=this.gl,u=this.uniforms;const presets={low:[.5,144],medium:[.7,240],high:[1,360]};const [scale,steps]=presets[state.quality];
+    const gl=this.gl,u=this.uniforms;const presets={low:[.5,144],medium:[.7,240],high:[1,360]};let [scale,steps]=presets[state.quality];if(state.blackhole&&state.spin>0){steps=Math.round(steps*1.7);scale*=.85;}
     const rect=this.canvas.getBoundingClientRect(),ratio=Math.min(devicePixelRatio,1.5)*scale;const w=Math.max(1,Math.floor(rect.width*ratio)),h=Math.max(1,Math.floor(rect.height*ratio));
     if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;gl.viewport(0,0,w,h);}
     gl.useProgram(this.program);gl.bindVertexArray(this.vao);gl.uniform2f(u.resolution,w,h);
     for(const name of ['camera','forward','right','up'])gl.uniform3fv(u[name],basis[name]);
     for(const name of ['mass','time','exposure','brightness','diskRadius'])gl.uniform1f(u[name],state[name]);
+    gl.uniform1f(u.spin,state.blackhole?(state.spin||0):0);gl.uniform1f(u.horizonR,horizonRadius(state.blackhole?(state.spin||0):0));gl.uniform1f(u.diskInner,iscoRadius(state.blackhole?(state.spin||0):0));gl.uniform1i(u.horizonUV,state.blackhole&&state.horizonUV?1:0);gl.uniform1i(u.horizonUVRotate,state.horizonUVRotate?1:0);
     gl.uniform1f(u.charge,state.blackhole?0:state.charge);gl.uniform1i(u.blackhole,state.blackhole?1:0);gl.uniform1i(u.nasaReady,state.nasaReady?1:0);
     gl.uniform1f(u.fov,state.fov*Math.PI/180);gl.uniform1f(u.skyRotation,state.skyRotation*Math.PI/180);
     gl.uniform1i(u.disk,state.disk?1:0);gl.uniform1i(u.diskUV,state.diskUV?1:0);gl.uniform1i(u.diskUVRotate,state.diskUVRotate?1:0);gl.uniform1i(u.lensing,state.lensing?1:0);gl.uniform1i(u.skyMode,state.skyMode);gl.uniform1i(u.steps,steps);gl.uniform1i(u.cubeCount,state.cubes.length);gl.uniform1i(u.diagnostic,state.diagnostic||0);
     if(state.cubes.length){gl.uniform4fv(u['cubes[0]'],new Float32Array(state.cubes.flatMap(c=>[...c.position,c.size])));gl.uniform3fv(u['colors[0]'],new Float32Array(state.cubes.flatMap(c=>c.color.match(/\w\w/g).map(v=>Math.pow(parseInt(v,16)/255,2.2)))));}
+    gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,this.horizonTexture);gl.uniform1i(u.horizonUVTexture,2);
     gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.diskTexture);gl.uniform1i(u.diskUVTexture,1);
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.uniform1i(u.skyTexture,0);
     if(state.compare){

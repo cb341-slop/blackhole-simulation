@@ -30,3 +30,14 @@
 .physics-hud[hidden],#curvatureKey[hidden],#tidalReadouts[hidden]{display:none}
 
 #tidalHUDControls{pointer-events:auto}#tidalHUDControls .tidal-playback{margin:10px 0 4px}#tidalHUDControls .tidal-playback button{padding:6px;font-size:10px}#tidalHUDControls input{margin:6px 0 0}#tidalHUDControls[hidden]{display:none}
+
+.horizon-uv-key{padding:12px;margin-top:12px;background:#111a1c;border:1px solid #465a65;border-radius:4px}.horizon-uv-key canvas{width:100%;height:auto;display:block}.horizon-uv-key p{font-size:10px;line-height:1.7;color:#a5b5b1}.horizon-uv-key[hidden]{display:none}
+.physics-hud{max-height:calc(100% - 215px);overflow:auto;scrollbar-width:thin;scrollbar-color:#52695a transparent}
+#orbitHUD{pointer-events:auto}#orbitHUD[hidden],#orbitControls[hidden]{display:none}
+#orbitClassification{display:block;padding:7px 8px;background:#28392b;border:1px solid #577352;border-radius:4px;color:#bddcae;font-size:11px;letter-spacing:0}
+#orbitClassification.unstable{background:#402e23;border-color:#a77850;color:#f2c18c}#orbitClassification.invalid{background:#302c35;border-color:#74627d;color:#cbb8d7}
+#orbitStatus{font-size:10px;color:#c1c7ae;margin:7px 0}
+.orbit-presets{display:flex;gap:4px;flex-wrap:wrap;margin:9px 0}.orbit-presets button,.orbit-kicks button{padding:6px 8px;border:1px solid #536250;border-radius:4px;font:10px monospace;color:#d4d6bd;background:#263026;cursor:pointer}.orbit-presets button.active{border-color:#e0b67a;color:#f5cb95;background:#493b27}
+.orbit-kicks{display:flex;gap:7px}.orbit-kicks button{flex:1}.orbit-kicks button:disabled,.tidal-playback button:disabled{opacity:.4;cursor:default}
+.orbit-readouts{display:grid;grid-template-columns:1fr auto;gap:4px;font-size:10px;margin:12px 0}.orbit-readouts dt{color:#adbeb4}.orbit-readouts dd{margin:0;color:#ead0a7;font-variant-numeric:tabular-nums}#orbitHUD .select-label{margin-top:10px}#orbitHUD select{padding:7px;font-size:10px}#orbitHUD .tidal-playback{margin:10px 0 7px}#orbitHUD .tidal-playback button{font-size:10px;padding:7px}
+@media(max-width:700px){.physics-actions{max-width:calc(100% - 24px);flex-wrap:wrap}.physics-actions .path-view-button{font-size:7px;padding:7px}.observer-map{top:98px}.comparing .observer-map{top:130px}.physics-hud{max-height:calc(100% - 205px);width:245px}.orbit-readouts{font-size:9px}.orbit-presets button{font-size:9px;padding:5px}#orbitHUD .tidal-playback button{font-size:9px}}

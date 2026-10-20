@@ -5,9 +5,9 @@ export const UV_BANDS=4;
 // The same cell colors and identifiers are used in the GPU texture and key.
 export function diskUVColor(sector,band,bottom=false){return `hsl(${(bottom?184:4)+sector*(bottom?13:8)} 73% ${32+band*8+(sector+band)%2*6}%)`;}
 export function diskUVLabel(sector,band){return `${String.fromCharCode(65+sector)}${band+1}`;}
-export function diskUVAt(x,z,inner,outer,time=0,rotate=false){
+export function diskUVAt(x,z,inner,outer,time=0,rotate=false,direction=1){
  const radius=Math.hypot(x,z),omega=1.35*Math.pow(inner/Math.max(radius,inner),1.5);
- const angular=Math.atan2(z,x)-(rotate?time*omega:0);
+ const angular=Math.atan2(z,x)-(rotate?time*omega*direction:0);
  return {u:((angular/(2*Math.PI)+.5)%1+1)%1,v:Math.max(0,Math.min(1,(radius-inner)/(outer-inner)))};
 }
 export function createDiskUVTexture(){
