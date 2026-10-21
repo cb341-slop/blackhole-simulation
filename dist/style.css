@@ -41,6 +41,9 @@
 .orbit-kicks{display:flex;gap:7px}.orbit-kicks button{flex:1}.orbit-kicks button:disabled,.tidal-playback button:disabled{opacity:.4;cursor:default}
 .orbit-readouts{display:grid;grid-template-columns:1fr auto;gap:4px;font-size:10px;margin:12px 0}.orbit-readouts dt{color:#adbeb4}.orbit-readouts dd{margin:0;color:#ead0a7;font-variant-numeric:tabular-nums}#orbitHUD .select-label{margin-top:10px}#orbitHUD select{padding:7px;font-size:10px}#orbitHUD .tidal-playback{margin:10px 0 7px}#orbitHUD .tidal-playback button{font-size:10px;padding:7px}
 @media(max-width:700px){.physics-actions{max-width:calc(100% - 24px);flex-wrap:wrap}.physics-actions .path-view-button{font-size:7px;padding:7px}.observer-map{top:98px}.comparing .observer-map{top:130px}.physics-hud{max-height:calc(100% - 205px);width:245px}.orbit-readouts{font-size:9px}.orbit-presets button{font-size:9px;padding:5px}#orbitHUD .tidal-playback button{font-size:9px}}
-.ai-disclosure{position:sticky;top:0;z-index:20;display:flex;align-items:center;height:36px;box-sizing:border-box;padding:8px 16px;background:#171a16;border-bottom:1px solid #41483b;color:#c3cbb9;font:12px/1.4 'DM Sans',sans-serif}.ai-disclosure strong{color:#f0d3a8;font-weight:600}
-@media(min-width:701px){.workspace,.panel-hidden .workspace{height:calc(100dvh - 36px)}}
-@media(max-width:700px){.panel-hidden .workspace,.panel-hidden .viewport{height:calc(100dvh - 36px)}.panel-hidden .viewport{min-height:0}}
+:root{--disclosure-height:36px}
+.ai-disclosure{position:sticky;top:0;z-index:20;display:flex;align-items:center;height:var(--disclosure-height);box-sizing:border-box;padding:8px 16px;background:#171a16;border-bottom:1px solid #41483b;color:#c3cbb9;font:12px/1.4 'DM Sans',sans-serif}.ai-disclosure strong{color:#f0d3a8;font-weight:600;white-space:nowrap}
+@media(min-width:701px){.workspace,.panel-hidden .workspace{height:calc(100dvh - var(--disclosure-height))}}
+@media(max-width:700px){.panel-hidden .workspace,.panel-hidden .viewport{height:calc(100dvh - var(--disclosure-height))}.panel-hidden .viewport{min-height:0}}
+
+@media(max-width:420px){:root{--disclosure-height:52px}}
