@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Singularity — Link preview proposals</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c221f'/%3E%3Cellipse cx='32' cy='32' rx='25' ry='10' fill='none' stroke='%23e5ac69' stroke-width='4' transform='rotate(-23 32 32)'/%3E%3Ccircle cx='32' cy='32' r='14' fill='%23080c0c' stroke='%23e5ac69' stroke-width='2'/%3E%3C/svg%3E">
+  <style>
+    :root{--paper:#f3f0e9;--ink:#1b2520;--muted:#687269;--line:#d8dcd0;--accent:#b55231;--green:#315743;--card:#fcfbf8;--radius:18px;font-family:Arial,Helvetica,sans-serif;color-scheme:light}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink)}button,a,input{font:inherit}button{cursor:pointer}a{color:inherit}button:focus-visible,a:focus-visible{outline:3px solid #b55231;outline-offset:4px}button:disabled{cursor:wait;opacity:.45}header{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:1376px;margin:auto;padding:27px 40px;border-bottom:1px solid var(--line)}.wordmark{font-size:12px;letter-spacing:.15em;font-weight:700;text-transform:uppercase;display:flex;align-items:center;gap:12px}.mark{width:24px;height:24px;border:1px solid var(--ink);border-radius:50%;position:relative}.mark:after{content:'';position:absolute;inset:7px -5px;border:1px solid var(--ink);border-radius:50%;transform:rotate(-25deg)}.header-links{display:flex;align-items:center;gap:22px;font-size:12px}.draft{font:10px monospace;letter-spacing:.05em;border:1px solid #b9c5b5;border-radius:30px;padding:7px 10px;color:var(--green)}.header-links a{text-decoration:none}.header-links a:hover{text-decoration:underline}main{max-width:1376px;margin:auto;padding:52px 40px 34px}.intro{display:grid;grid-template-columns:1.4fr 1fr;gap:70px;align-items:center;margin-bottom:47px}.eyebrow{font:10px monospace;letter-spacing:.13em;color:var(--accent);text-transform:uppercase}h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(42px,4.9vw,70px);line-height:1.02;letter-spacing:-.045em;font-weight:400;margin:17px 0 20px}h1 em{font-style:italic;color:var(--accent)}.intro-copy{font-size:15px;line-height:1.75;color:var(--muted);max-width:560px;margin:0}.current{padding:23px 25px;border:1px dashed #bac3b4;border-radius:14px;background:#ebece4}.current .small-label{font:10px monospace;letter-spacing:.07em;color:var(--muted);margin-bottom:15px}.old-card{padding:17px;border-radius:10px;background:#dce3d8;border-left:3px solid #a4b4a2}.old-card strong{font-size:14px;line-height:1.5}.old-card p{font-size:12px;line-height:1.6;color:#68756b;margin:5px 0 10px}.old-card small{font-size:10px;color:#586d5f}.current-note{font-size:12px;line-height:1.6;margin:15px 0 0;color:var(--muted)}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:25px}.toolbar-group{display:flex;align-items:center;gap:13px}.toolbar-label{font-size:11px;color:var(--muted)}.segmented{display:flex;background:#e5e8df;border-radius:8px;padding:3px;gap:2px}.segmented button{border:0;background:transparent;padding:8px 11px;border-radius:6px;font-size:11px;color:#59675d}.segmented button[aria-pressed=true]{background:var(--card);color:var(--ink);box-shadow:0 1px 4px #182b1410}.render-status{font:10px monospace;color:var(--muted);display:flex;gap:7px;align-items:center;max-width:260px;line-height:1.5}.dot{display:block;flex-shrink:0;width:6px;height:6px;background:#b9a16c;border-radius:50%}.render-status.ready .dot{background:#658867}.render-status.error .dot{background:#ba623f}.proposals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.direction{border:1px solid #d0d6c8;background:var(--card);border-radius:var(--radius);overflow:hidden;transition:border-color .2s,box-shadow .2s}.direction.selected{border-color:#b55231;box-shadow:0 0 0 2px #b5523118}.direction-head{padding:20px 20px 17px;display:flex;align-items:center;justify-content:space-between;gap:8px}.direction-name{font:10px monospace;letter-spacing:.06em}.recommend{font-size:9px;background:#e6ecde;color:#45663c;border-radius:30px;padding:5px 7px}.chat-stage{padding:0 16px 18px}.chat-card{background:#172c24;color:#f0f3e9;border-radius:12px;overflow:hidden;border:1px solid #172c24;min-width:0}.preview-image{display:block;width:100%;aspect-ratio:1200/630;object-fit:cover;background:#0a1110}.chat-body{padding:15px 16px 14px}.domain{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#92b19e;margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.preview-title{font-size:16px;line-height:1.3;margin:0 0 7px;min-height:42px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;letter-spacing:-.015em}.preview-description{font-size:12px;line-height:1.55;color:#b1c4b8;margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:56px}.chat-footer{border-top:1px solid #315043;margin:0 16px;padding:10px 0;display:flex;align-items:center;justify-content:space-between;font-size:9px;color:#88aa96}.chat-footer span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:85%}.chat-footer .checks{color:#8ebdb3}.direction-info{padding:0 21px 21px}.direction-info h2{font:400 24px/1.2 Georgia,serif;letter-spacing:-.02em;margin:0 0 10px}.direction-info p{font-size:12px;color:var(--muted);line-height:1.7;min-height:62px;margin:0 0 17px}.choose{width:100%;padding:11px 13px;border-radius:7px;background:transparent;color:var(--ink);border:1px solid #bcc5b4;font-size:11px;display:flex;justify-content:space-between;align-items:center}.selected .choose{background:var(--ink);border-color:var(--ink);color:#f7f4eb}.compact .chat-card{display:grid;grid-template-columns:86px 1fr;position:relative;min-height:180px;align-items:start}.compact .preview-image{width:86px;height:86px;aspect-ratio:1;border-radius:8px;margin:15px 0 0 11px;object-position:center}.compact .chat-body{padding-left:23px;padding-right:12px}.compact .preview-title{font-size:13px;min-height:34px}.compact .preview-description{font-size:10px;min-height:47px}.compact .domain{font-size:7px}.compact .chat-footer{grid-column:1/-1;align-self:end;margin-top:4px}.preview-note{font-size:11px;line-height:1.7;color:var(--muted);margin:15px 0 35px}.selection{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:28px;padding-top:30px;border-top:1px solid var(--line)}.section-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 15px}.section-heading h2{font:400 29px Georgia,serif;letter-spacing:-.025em;margin:0}.small-meta{font:10px monospace;color:var(--muted)}.large-poster{border-radius:12px;overflow:hidden;background:#0a100e;position:relative;border:1px solid #cbd2c1}.large-poster img{width:100%;display:block;aspect-ratio:1200/630}.poster-caption{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 0}.poster-caption span{font:10px monospace;color:var(--muted)}.button{background:var(--ink);color:#f3f3e9;border:1px solid var(--ink);border-radius:6px;padding:10px 13px;font-size:11px;white-space:nowrap}.button.secondary{background:transparent;color:var(--ink);border-color:#b7c2ae}.recommendation{background:#e7ecdf;padding:15px 17px;border-radius:9px;color:#425b43;font-size:12px;line-height:1.7;margin:8px 0 0}.recommendation strong{color:#2d4933}.code-panel{background:#1a221e;border-radius:12px;overflow:hidden}.code-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 17px;border-bottom:1px solid #344137;color:#aebcad;font:10px monospace}.code-header button{border:1px solid #50644f;color:#d7e1cd;background:#2b392d;border-radius:5px;font-size:10px;padding:6px 9px}pre{padding:17px;margin:0;overflow:auto;max-height:360px;color:#e4d8b8;font:10px/1.9 'SFMono-Regular',Consolas,monospace;tab-size:2;white-space:pre}.implementation{font-size:12px;line-height:1.75;color:var(--muted);margin:14px 0 0}.details{display:grid;grid-template-columns:repeat(3,1fr);gap:27px;margin-top:38px;border-top:1px solid var(--line);padding-top:24px}.details h3{font-size:12px;margin:0 0 9px}.details p{font-size:12px;line-height:1.75;color:var(--muted);margin:0}.details a{text-decoration-color:#98a18d;text-underline-offset:3px}footer{display:flex;justify-content:space-between;gap:20px;max-width:1296px;border-top:1px solid var(--line);margin:35px auto 0;padding-top:19px;font-size:10px;line-height:1.7;color:var(--muted)}.render-stage{position:fixed;left:-20000px;top:0;width:1200px;height:630px;pointer-events:none}.render-stage canvas{display:block;width:1200px;height:630px}#copyStatus{height:16px;font-size:10px;color:var(--green);margin:8px 0 0}.current-image-note{font-size:10px;color:var(--muted);margin:9px 0 0;line-height:1.6}
+    @media(max-width:1100px){header{padding:23px 25px}main{padding:40px 25px}.intro{gap:35px}.proposals{gap:14px}.direction-head{padding:17px 16px}.direction-info{padding:0 17px 19px}.chat-stage{padding:0 11px 16px}.preview-title{font-size:14px}.preview-description{font-size:11px}.chat-body{padding:13px}.recommend{font-size:8px}.direction-name{font-size:9px}.compact .chat-card{grid-template-columns:64px 1fr}.compact .preview-image{width:64px;height:64px}.compact .chat-body{padding-left:23px}.selection{gap:20px}.small-meta{font-size:9px}}
+    @media(max-width:800px){.intro{grid-template-columns:1fr;gap:26px;margin-bottom:30px}.current{max-width:520px}.toolbar{flex-wrap:wrap}.render-status{max-width:none}.proposals{grid-template-columns:1fr;max-width:510px;margin:auto}.direction{display:grid;grid-template-columns:1fr}.chat-stage{padding:0 20px 18px}.preview-title{font-size:17px}.preview-description{font-size:13px}.direction-info p{min-height:0}.direction-info h2{font-size:25px}.selection{grid-template-columns:1fr}.preview-note{margin-top:20px}.details{grid-template-columns:1fr;gap:20px}.header-links{gap:12px}.header-links a{display:none}.compact .chat-card{grid-template-columns:95px 1fr}.compact .preview-image{width:95px;height:95px}.compact .chat-body{padding-left:25px}.compact .preview-title{font-size:16px}.compact .preview-description{font-size:12px}.compact .domain{font-size:9px}.direction-head{padding:20px}.direction-name{font-size:10px}.recommend{font-size:10px}.direction-info{padding:0 21px 22px}}
+    @media(max-width:460px){header{padding:20px}.wordmark{font-size:10px;letter-spacing:.08em}.draft{font-size:8px}main{padding:31px 18px 24px}h1{font-size:48px}.intro-copy{font-size:14px}.toolbar-group{gap:8px}.toolbar{gap:13px}.toolbar-label{font-size:10px}.segmented button{padding:8px 9px;font-size:10px}.selection .section-heading{flex-wrap:wrap}.section-heading h2{font-size:27px}.poster-caption{flex-wrap:wrap;gap:12px}.poster-caption .button{width:100%}footer{flex-direction:column;gap:5px}.current{padding:20px}.current-note{font-size:11px}}
+  h1{font-family:Arial,Helvetica,sans-serif;font-size:clamp(32px,4vw,48px);font-weight:600;line-height:1.1;letter-spacing:-.04em}h1 em{font-style:normal}.intro{gap:48px;margin-bottom:30px}.selection>div{min-width:0}.code-panel{min-width:0}.section-heading h2{font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:600}.direction-info h2{font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:600}.recommendation{background:#e9ede4}.preview-title{min-height:42px}@media(max-width:800px){.intro{gap:24px}}
+  </style>
+</head>
+<body>
+  <header><div class="wordmark"><i class="mark" aria-hidden="true"></i> Singularity / Metadata proposal</div><div class="header-links"><span class="draft">PROPOSAL · NOT LIVE</span><a href="https://singularity-observatory.milkysiren128.chatgpt.site/" target="_blank" rel="noopener">Open simulator ↗</a></div></header>
+  <main>
+    <section class="intro">
+      <div><span class="eyebrow">Metadata and preview images</span><h1>Link preview proposals</h1><p class="intro-copy">A physical simulation for understanding gravitational lensing and other black-hole properties. Three preview-image options, with factual English and German metadata.</p></div>
+      <aside class="current"><div class="small-label">CURRENT / TEXT ONLY</div><div class="old-card"><strong>Black hole / singularity simulator</strong><p>Interactive WebGL Schwarzschild/Kerr black-hole and naked-singularity simulator with horizon UV mapping, orbit stability, and tidal diagrams.</p><small>↗ singularity-observatory.milkysiren128.chatgpt.site</small></div><p class="current-note">The current page has a title and description, but no Open Graph image. The main change proposed here is a static image plus a shorter description.</p></aside>
+    </section>
+    <div class="toolbar">
+      <div class="toolbar-group"><span class="toolbar-label">Preview copy</span><div class="segmented" aria-label="Preview language"><button id="langDE" aria-pressed="true">Deutsch</button><button id="langEN" aria-pressed="false">English</button></div></div>
+      <div class="toolbar-group"><span class="toolbar-label">Chat layout</span><div class="segmented" aria-label="Illustrative chat layout"><button id="layoutWide" aria-pressed="true">Wide image</button><button id="layoutCompact" aria-pressed="false">Compact</button></div></div>
+      <div class="render-status" id="renderStatus" role="status"><i class="dot"></i><span id="renderStatusText">Preparing actual simulator renders…</span></div>
+    </div>
+    <section class="proposals" aria-label="Link preview directions">
+      <article class="direction selected" data-direction="cinematic"><div class="direction-head"><span class="direction-name">01 / BLACK-HOLE RENDER</span><span class="recommend">Recommended</span></div><div class="chat-stage"><div class="chat-card"><img class="preview-image" data-image="cinematic" alt="Warm accretion disk bent around a black-hole shadow."><div class="chat-body"><div class="domain">Black hole simulator</div><h3 class="preview-title" data-title="cinematic"></h3><p class="preview-description" data-description="cinematic"></p></div><div class="chat-footer"><span>↗ singularity-observatory.milkysiren128.chatgpt.site</span><span class="checks">✓✓</span></div></div></div><div class="direction-info"><h2>Black-hole render</h2><p>A frame from the simulation showing the black-hole shadow and the distorted accretion disk. No controls or browser UI.</p><button class="choose" data-choose="cinematic" aria-pressed="true"><span>Selected direction</span><span>✓</span></button></div></article>
+      <article class="direction" data-direction="comparison"><div class="direction-head"><span class="direction-name">02 / COMPARE</span></div><div class="chat-stage"><div class="chat-card"><img class="preview-image" data-image="comparison" alt="The same scene with gravitational lensing on and with straight light paths."><div class="chat-body"><div class="domain">Black hole simulator</div><h3 class="preview-title" data-title="comparison"></h3><p class="preview-description" data-description="comparison"></p></div><div class="chat-footer"><span>↗ singularity-observatory.milkysiren128.chatgpt.site</span><span class="checks">✓✓</span></div></div></div><div class="direction-info"><h2>Lensing comparison</h2><p>The same camera and scene, with curved and straight light paths. Shows the effect of gravitational lensing directly.</p><button class="choose" data-choose="comparison" aria-pressed="false"><span>Choose this direction</span><span>↗</span></button></div></article>
+      <article class="direction" data-direction="orbits"><div class="direction-head"><span class="direction-name">03 / PHYSICS LAB</span></div><div class="chat-stage"><div class="chat-card"><img class="preview-image" data-image="orbits" alt="Stable and plunging test-particle trajectories around a wireframe black hole."><div class="chat-body"><div class="domain">Black hole simulator</div><h3 class="preview-title" data-title="orbits"></h3><p class="preview-description" data-description="orbits"></p></div><div class="chat-footer"><span>↗ singularity-observatory.milkysiren128.chatgpt.site</span><span class="checks">✓✓</span></div></div></div><div class="direction-info"><h2>Orbit visualization</h2><p>A stable orbit and an unstable trajectory after a small radial perturbation. Shows another physical visualization included in the simulator.</p><button class="choose" data-choose="orbits" aria-pressed="false"><span>Choose this direction</span><span>↗</span></button></div></article>
+    </section>
+    <p class="preview-note">Illustrative chat layouts. Actual apps control cropping, text length, and cached previews. Switch between English and German above.</p>
+    <section class="selection" aria-label="Selected proposal and metadata">
+      <div><div class="section-heading"><h2 id="selectedHeading">Black-hole render.</h2><span class="small-meta">IMAGE MASTER / 1200 × 630</span></div><div class="large-poster"><img id="selectedImage" alt="Selected social-preview image."></div><div class="poster-caption"><span id="imageFilename">og-black-hole-schwarzschild-nasa-v1.jpg</span><button class="button" id="downloadImage" disabled>Download image · JPEG ↓</button></div><p class="current-image-note" id="imageNote">Images are being rendered from the existing simulator. Simple concept drawings remain visible until the GPU is ready.</p><div class="recommendation"><strong>Suggested default: option 01.</strong> It shows the main simulation. Option 02 makes the lensing effect explicit; option 03 shows orbital stability. The factual title and description are the same for all three.</div></div>
+      <div><div class="section-heading"><h2>The matching metadata.</h2><span class="small-meta" id="copyCount"></span></div><div class="code-panel"><div class="code-header"><span>PROPOSED &lt;head&gt; / NOT APPLIED</span><button id="copyMetadata">Copy HTML</button></div><pre id="metadata" tabindex="0" aria-label="Proposed HTML metadata"></pre></div><p id="copyStatus" role="status"></p><p class="implementation">Publish the downloaded JPEG at the proposed image URL, then put this block in the page’s initial HTML. These URLs are proposed filenames; the images are not hosted there yet.</p><p class="implementation">A crawler needs the static image file. It should not need to run the WebGL scene or the image-generation code in this proposal.</p></div>
+    </section>
+    <section class="details" aria-label="Implementation notes">
+      <div><h3>Use a static, public image.</h3><p>I propose a 1200 × 630 JPEG, with the important subject centered and no UI clutter. The Open Graph tags describe its dimensions and include image alt text. <a href="https://ogp.me/" target="_blank" rel="noopener">Open Graph reference ↗</a></p></div>
+      <div><h3>Keep the description factual.</h3><p>The description states the purpose: understanding gravitational lensing and other black-hole properties. Numerical and model limitations remain in the simulator’s help. The AI-authored disclosure stays in the site header.</p></div>
+      <div><h3>Check the real share after publishing.</h3><p>Use a new image filename when changing the artwork. Previously sent messages may keep their old preview; a new share may still use cached metadata. Verify on the apps you actually use.</p></div>
+    </section>
+    <footer><span>Local proposal only. The live simulator and its metadata have not been changed.</span><span>Image source: the simulator’s own WebGL renderer. Artwork is a selected scene, not a UI screenshot.</span></footer>
+  </main>
+  <div class="render-stage" aria-hidden="true"><canvas id="renderCanvas"></canvas></div>
+  <script>
+  const ProposalModules=(()=>{const modules=Object.create(null);
+modules['kerr']=(()=>{
+// Kerr–Schild Cartesian coordinates, spin axis +Y, G=c=1.
+// Use the outgoing chart for past-directed camera rays: this is regular at
+// the horizon encountered while tracing light backwards from the observer.
+const dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),add=(a,b)=>a.map((v,i)=>v+b[i]),mul=(a,s)=>a.map(v=>v*s);
+const horizonRadius=(spin=0)=>1+Math.sqrt(1-spin*spin);
+function kerrRadius(p,a=0){const s=dot(p,p)-a*a;return Math.sqrt(Math.max(1e-20,(s+Math.sqrt(s*s+4*a*a*p[1]*p[1]))/2));}
+function kerrMetric(p,mass=1,spin=0){
+ const a=-spin*mass,r=kerrRadius(p,a),r2=r*r,D=r2+a*a,F=r2*r2+a*a*p[1]*p[1],sigma=F/r2;
+ const H=mass*r*r2/F,l=[(r*p[0]-a*p[2])/D,p[1]/r,(r*p[2]+a*p[0])/D];
+ const dr=[r*p[0]/sigma,p[1]*D/(r*sigma),r*p[2]/sigma];
+ const gradH=dr.map((v,i)=>H*((3/r-4*r*r2/F)*v-(i===1?2*a*a*p[1]/F:0)));
+ return {a,r,H,l,dr,gradH};
+}
+function kerrInitialMomentum(position,direction,mass=1,spin=0){
+ const {H,l}=kerrMetric(position,mass,spin),f=1-2*H;
+ if(f<=0)throw new Error('Static camera must remain outside the Kerr ergosphere.');
+ const d=dot(l,direction),root=Math.sqrt(f);
+ return add(mul(direction,1/root),mul(l,(d+2*H)/f-d/root));
+}
+function kerrHamiltonian(position,p,mass=1,spin=0){const {H,l}=kerrMetric(position,mass,spin);return .5*(-1+dot(p,p))-H*(1+dot(l,p))**2;}
+function kerrDerivative(position,p,mass=1,spin=0){
+ const {a,r,H,l,dr,gradH}=kerrMetric(position,mass,spin),D=r*r+a*a;
+ const B=position[0]*p[0]+position[2]*p[2],N=r*B+a*(position[0]*p[2]-position[2]*p[0]);
+ const factor=B/D-2*r*N/(D*D)-p[1]*position[1]/(r*r);
+ const explicit=[(r*p[0]+a*p[2])/D,p[1]/r,(r*p[2]-a*p[0])/D];
+ const gradQ=dr.map((v,i)=>v*factor+explicit[i]),S=1+dot(l,p);
+ return {x:add(p,mul(l,-2*H*S)),p:gradH.map((v,i)=>v*S*S+2*H*S*gradQ[i])};
+}
+function kerrStep(x,p,h,mass=1,spin=0){
+ const a=kerrDerivative(x,p,mass,spin),b=kerrDerivative(add(x,mul(a.x,h/2)),add(p,mul(a.p,h/2)),mass,spin),c=kerrDerivative(add(x,mul(b.x,h/2)),add(p,mul(b.p,h/2)),mass,spin),d=kerrDerivative(add(x,mul(c.x,h)),add(p,mul(c.p,h)),mass,spin);
+ return {x:x.map((v,i)=>v+h*(a.x[i]+2*b.x[i]+2*c.x[i]+d.x[i])/6),p:p.map((v,i)=>v+h*(a.p[i]+2*b.p[i]+2*c.p[i]+d.p[i])/6)};
+}
+function traceKerrRay(camera,direction,mass,spin,{lensing=true,step=.025,maxSteps=5000}={}){
+ let x=[...camera],p=lensing?kerrInitialMomentum(x,direction,mass,spin):[...direction];
+ const points=[[...x]],r0=kerrRadius(x,spin*mass),cutoff=horizonRadius(spin)*mass*1.0005;
+ let status='budget',maxError=0,minRadius=r0,iterations=0;
+ for(let i=0;i<maxSteps;i++){
+  const r=kerrRadius(x,spin*mass);minRadius=Math.min(minRadius,r);iterations=i+1;
+  if(r<cutoff){status='horizon';break;}
+  const v=lensing?kerrDerivative(x,p,mass,spin).x:direction;
+  if(Math.hypot(...x)>Math.max(70*mass,r0+40*mass)&&dot(x,v)>0){status='escaped';break;}
+  const h=Math.min(r*step/Math.max(Math.hypot(...v),.1),1*mass);
+  const next=lensing?kerrStep(x,p,h,mass,spin):{x:add(x,mul(direction,h)),p};
+  if(!next.x.every(Number.isFinite)||!next.p.every(Number.isFinite)){status='cutoff';break;}
+  x=next.x;p=next.p;if(i%2===0)points.push([...x]);
+  if(lensing)maxError=Math.max(maxError,Math.abs(2*kerrHamiltonian(x,p,mass,spin)));
+ }
+ points.push([...x]);return {points,status,maxError,minRadius,iterations};
+}
+
+// The same analytic Hamiltonian derivatives as above, used by the GPU tracer.
+const kerrGLSL=`
+float kerrR(vec3 x,float a){float s=dot(x,x)-a*a;return sqrt(max(1e-12,.5*(s+sqrt(s*s+4.*a*a*x.y*x.y))));}
+void kerrField(vec3 x,float a,out float r,out float H,out vec3 l,out vec3 dr,out vec3 gradH){
+ r=kerrR(x,a);float r2=r*r,D=r2+a*a,F=r2*r2+a*a*x.y*x.y,sigma=F/r2;
+ H=mass*r*r2/F;l=vec3((r*x.x-a*x.z)/D,x.y/r,(r*x.z+a*x.x)/D);
+ dr=vec3(r*x.x/sigma,x.y*D/(r*sigma),r*x.z/sigma);
+ gradH=H*((3./r-4.*r*r2/F)*dr-vec3(0.,2.*a*a*x.y/F,0.));
+}
+vec3 kerrInit(vec3 x,vec3 d,float a){float r,H;vec3 l,dr,g;kerrField(x,a,r,H,l,dr,g);float f=max(1.-2.*H,.0001),q=dot(l,d);return d/sqrt(f)+l*((q+2.*H)/f-q/sqrt(f));}
+void kerrFlow(vec3 x,vec3 p,float a,out vec3 dx,out vec3 dp){
+ float r,H;vec3 l,dr,g;kerrField(x,a,r,H,l,dr,g);float D=r*r+a*a,B=x.x*p.x+x.z*p.z,N=r*B+a*(x.x*p.z-x.z*p.x);
+ vec3 gradQ=dr*(B/D-2.*r*N/(D*D)-p.y*x.y/(r*r))+vec3((r*p.x+a*p.z)/D,p.y/r,(r*p.z-a*p.x)/D);
+ float S=1.+dot(l,p);dx=p-2.*H*S*l;dp=g*S*S+2.*H*S*gradQ;
+}
+`;
+
+return {horizonRadius,kerrRadius,kerrMetric,kerrInitialMomentum,kerrHamiltonian,kerrDerivative,kerrStep,traceKerrRay,kerrGLSL};})();
+modules['orbits']=(()=>{
+const {horizonRadius}=modules['kerr'];
+// Equatorial Kerr timelike geodesics. r,a,L in M; proper time in M.
+function photonRadius(a=0,direction=1){return 2*(1+Math.cos(2/3*Math.acos(-direction*a)));}
+function iscoRadius(a=0,direction=1){
+ const z1=1+Math.cbrt(1-a*a)*(Math.cbrt(1+a)+Math.cbrt(1-a)),z2=Math.sqrt(3*a*a+z1*z1);
+ return 3+z2-direction*Math.sqrt(Math.max(0,(3-z1)*(3+z1+2*z2)));
+}
+function circularOrbit(r,a=0,direction=1){
+ const horizon=horizonRadius(a),photon=photonRadius(a,direction),isco=iscoRadius(a,direction),tolerance=1e-7;
+ let classification=r<=horizon+tolerance?'Horizon / interior':r<photon-tolerance?'No massive circular orbit':Math.abs(r-photon)<=tolerance?'Photon orbit only · unstable':r<isco-tolerance?'Unstable circular orbit':Math.abs(r-isco)<=tolerance?'Marginally stable · ISCO':'Stable circular orbit';
+ const valid=r>photon+tolerance&&r>horizon;
+ if(!valid)return {valid,classification,horizon,photon,isco};
+ const root=Math.sqrt(r),den=r**.75*Math.sqrt(r**1.5-3*root+2*direction*a);
+ return {valid,classification,horizon,photon,isco,energy:(r**1.5-2*root+direction*a)/den,L:direction*(r*r-2*direction*a*root+a*a)/den,omega:direction/(r**1.5+direction*a)};
+}
+function radialPotential(r,E,L,a=0){return E*E-1+2/r-(L*L+a*a*(1-E*E))/(r*r)+2*(L-a*E)**2/(r*r*r);}
+function orbitEnergy(r,L,a=0,velocity=0){
+ const A=1+a*a/(r*r)+2*a*a/(r*r*r),B=-4*a*L/(r*r*r),C=-1+2/r-(L*L+a*a)/(r*r)+2*L*L/(r*r*r)-velocity*velocity;
+ return (-B+Math.sqrt(Math.max(0,B*B-4*A*C)))/(2*A);
+}
+function orbitDerivative([r,v,phi],E,L,a){
+ const delta=r*r-2*r+a*a;
+ return [v,-1/(r*r)+(L*L+a*a*(1-E*E))/(r**3)-3*(L-a*E)**2/(r**4),((1-2/r)*L+2*a*E/r)/delta];
+}
+function orbitStep(y,h,E,L,a=0){
+ const next=(v,k,s)=>v.map((x,i)=>x+s*k[i]);
+ const k1=orbitDerivative(y,E,L,a),k2=orbitDerivative(next(y,k1,h/2),E,L,a),k3=orbitDerivative(next(y,k2,h/2),E,L,a),k4=orbitDerivative(next(y,k3,h),E,L,a);
+ return y.map((x,i)=>x+h*(k1[i]+2*k2[i]+2*k3[i]+k4[i])/6);
+}
+function createOrbit(radius=8,spin=0,direction=1,momentum=1,kick=0){
+ const circular=circularOrbit(radius,spin,direction);
+ if(!circular.valid)return {circular,spin,direction,radius,y:[radius,0,0],tau:0,trail:[],status:circular.classification,maxError:0};
+ const L=circular.L*momentum,E=orbitEnergy(radius,L,spin,kick);
+ return {circular,spin,direction,radius,y:[radius,kick,0],tau:0,L,E,trail:[[radius,0]],status:'running',maxError:0};
+}
+function advanceOrbit(orbit,duration){
+ if(orbit.status!=='running')return;
+ let remaining=duration;
+ for(let i=0;i<1200&&remaining>1e-10;i++){
+  const r=orbit.y[0],cutoff=horizonRadius(orbit.spin)+.015;
+  if(r<=cutoff){orbit.status='Horizon reached · exterior integration ends';break;}
+  if(r>100){orbit.status='Escaped the displayed region';break;}
+  const angular=Math.abs(orbitDerivative(orbit.y,orbit.E,orbit.L,orbit.spin)[2]);
+  const h=Math.min(remaining,.08,.025/Math.max(angular,.01),.15*(r-cutoff)/Math.max(Math.abs(orbit.y[1]),.01));
+  if(h<1e-6){orbit.status='Horizon reached · exterior integration ends';break;}
+  const y=orbitStep(orbit.y,h,orbit.E,orbit.L,orbit.spin);
+  if(!y.every(Number.isFinite)){orbit.status='Numerical limit reached';break;}
+  orbit.y=y;orbit.tau+=h;remaining-=h;
+  orbit.maxError=Math.max(orbit.maxError,Math.abs(y[1]*y[1]-radialPotential(y[0],orbit.E,orbit.L,orbit.spin)));
+  const last=orbit.trail.at(-1);
+  if(Math.abs(y[2]-last[1])>.018||Math.abs(y[0]-last[0])>.035){orbit.trail.push([y[0],y[2]]);if(orbit.trail.length>5000)orbit.trail.shift();}
+ }
+}
+function orbitGeometry(orbit,{mass=1,orbitTrail=true,orbitReference=true}={}){
+ const lines=[],points=[],a=orbit.spin,rh=horizonRadius(a),line=(p,q,c)=>lines.push(...p.map(x=>x*mass),...c,...q.map(x=>x*mass),...c);
+ const position=(r,phi)=>{const rho=Math.sqrt(r*r+a*a);return [rho*Math.cos(phi),0,-rho*Math.sin(phi)];};
+ const ring=(r,color)=>{for(let i=0;i<160;i++)line(position(r,i*Math.PI/80),position(r,(i+1)*Math.PI/80),color);};
+ // Oblate coordinate horizon, not an embedding of its intrinsic surface metric.
+ const surface=(theta,phi)=>[Math.sqrt(rh*rh+a*a)*Math.sin(theta)*Math.cos(phi),rh*Math.cos(theta),Math.sqrt(rh*rh+a*a)*Math.sin(theta)*Math.sin(phi)];
+ for(let row=1;row<12;row++)for(let i=0;i<96;i++)line(surface(row*Math.PI/12,i*Math.PI/48),surface(row*Math.PI/12,(i+1)*Math.PI/48),[.96,.50,.30,.32]);
+ for(let col=0;col<16;col++)for(let i=0;i<48;i++)line(surface(i*Math.PI/48,col*Math.PI/8),surface((i+1)*Math.PI/48,col*Math.PI/8),[.96,.50,.30,.32]);
+ if(orbitReference){ring(orbit.circular.photon,[.66,.75,1,.45]);ring(orbit.circular.isco,[.44,.83,.59,.65]);ring(orbit.radius,[.9,.87,.69,.32]);}
+ if(orbitTrail)for(let i=1;i<orbit.trail.length;i++)line(position(...orbit.trail[i-1]),position(...orbit.trail[i]),[.96,.80,.41,.35+.55*i/orbit.trail.length]);
+ const p=position(orbit.y[0],orbit.y[2]);points.push(...p.map(x=>x*mass),1,.88,.54,1);
+ line([0,-3,0],[0,4,0],[.6,.8,.9,.4]);
+ // Sparse plane reference around the orbit.
+ const extent=Math.max(12,orbit.radius*1.35);
+ for(let i=-extent;i<=extent;i+=2){line([-extent,-.04,i],[extent,-.04,i],[.36,.47,.42,.08]);line([i,-.04,-extent],[i,-.04,extent],[.36,.47,.42,.08]);}
+ return {lines,points,pointSize:9};
+}
+
+return {photonRadius,iscoRadius,circularOrbit,radialPotential,orbitEnergy,orbitDerivative,orbitStep,createOrbit,advanceOrbit,orbitGeometry};})();
+modules['disk-uv']=(()=>{
+const UV_SECTORS=8;
+const UV_BANDS=4;
+
+// U wraps around the disk; V runs from its inner edge to its outer edge.
+// The same cell colors and identifiers are used in the GPU texture and key.
+function diskUVColor(sector,band,bottom=false){return `hsl(${(bottom?184:4)+sector*(bottom?13:8)} 73% ${32+band*8+(sector+band)%2*6}%)`;}
+function diskUVLabel(sector,band){return `${String.fromCharCode(65+sector)}${band+1}`;}
+function diskUVAt(x,z,inner,outer,time=0,rotate=false,direction=1){
+ const radius=Math.hypot(x,z),omega=1.35*Math.pow(inner/Math.max(radius,inner),1.5);
+ const angular=Math.atan2(z,x)-(rotate?time*omega*direction:0);
+ return {u:((angular/(2*Math.PI)+.5)%1+1)%1,v:Math.max(0,Math.min(1,(radius-inner)/(outer-inner)))};
+}
+function createDiskUVTexture(){
+ const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=2048;
+ const ctx=canvas.getContext('2d'),cw=canvas.width/UV_SECTORS,ch=canvas.height/(UV_BANDS*2);
+ for(let side=0;side<2;side++)for(let band=0;band<UV_BANDS;band++)for(let sector=0;sector<UV_SECTORS;sector++){
+  const x=sector*cw,y=(band+side*UV_BANDS)*ch;ctx.fillStyle=diskUVColor(sector,band,side===1);ctx.fillRect(x,y,cw,ch);
+  ctx.strokeStyle='#101715';ctx.lineWidth=7;ctx.strokeRect(x,y,cw,ch);
+  ctx.strokeStyle='#fff8dc77';ctx.lineWidth=2;ctx.strokeRect(x+7,y+7,cw-14,ch-14);
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 25px sans-serif';ctx.lineWidth=5;ctx.strokeStyle='#0b1519';ctx.fillStyle='#fffbed';ctx.strokeText(side?'BOTTOM':'TOP',x+cw/2,y+ch*.19);ctx.fillText(side?'BOTTOM':'TOP',x+cw/2,y+ch*.19);ctx.font='bold 66px sans-serif';ctx.lineWidth=7;ctx.strokeText(diskUVLabel(sector,band),x+cw/2,y+ch*.43);ctx.fillText(diskUVLabel(sector,band),x+cw/2,y+ch*.43);
+  ctx.font='16px monospace';ctx.lineWidth=4;const coordinates=`U ${((sector+.5)/UV_SECTORS).toFixed(2)}  V ${((band+.5)/UV_BANDS).toFixed(2)}`;ctx.strokeText(coordinates,x+cw/2,y+ch*.65);ctx.fillText(coordinates,x+cw/2,y+ch*.65);
+  ctx.font='20px sans-serif';ctx.fillText('U →',x+cw*.79,y+ch*.86);ctx.fillText('V ↓',x+cw*.23,y+ch*.86);
+ }return canvas;
+}
+function drawDiskUVReference(canvas,bottom=false){
+ const dpr=Math.min(devicePixelRatio||1,2),w=280,h=254;canvas.width=w*dpr;canvas.height=h*dpr;
+ const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+ const cx=140,cy=125,r0=30,r1=105;
+ for(let band=0;band<UV_BANDS;band++)for(let sector=0;sector<UV_SECTORS;sector++){
+  const a0=(sector/UV_SECTORS-.5)*Math.PI*2,a1=((sector+1)/UV_SECTORS-.5)*Math.PI*2,ri=r0+(r1-r0)*band/UV_BANDS,ro=r0+(r1-r0)*(band+1)/UV_BANDS;
+  ctx.beginPath();ctx.arc(cx,cy,ro,-a0,-a1,true);ctx.arc(cx,cy,ri,-a1,-a0,false);ctx.closePath();ctx.fillStyle=diskUVColor(sector,band,bottom);ctx.fill();ctx.strokeStyle='#111c14';ctx.lineWidth=1.1;ctx.stroke();
+  const angle=(a0+a1)/2,r=(ri+ro)/2;ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff9e6';ctx.strokeStyle='#152019';ctx.lineWidth=2;const label=diskUVLabel(sector,band),x=cx+Math.cos(angle)*r,y=cy-Math.sin(angle)*r;ctx.strokeText(label,x,y);ctx.fillText(label,x,y);
+ }
+ ctx.font='8px monospace';ctx.textAlign='center';ctx.fillStyle='#b6c9a3';ctx.fillText('V = 0',cx,cy-5);ctx.fillStyle='#7d9270';ctx.fillText('INNER',cx,cy+7);
+ ctx.fillStyle='#aebc9b';ctx.fillText('U .75',cx,10);ctx.fillText('U .25',cx,244);ctx.textAlign='left';ctx.fillText('U 0',2,cy);ctx.textAlign='right';ctx.fillText('U .5',278,cy);
+}
+
+return {UV_SECTORS,UV_BANDS,diskUVColor,diskUVLabel,diskUVAt,createDiskUVTexture,drawDiskUVReference};})();
+modules['horizon-uv']=(()=>{
+const {kerrRadius}=modules['kerr'];
+function horizonUVAt(p,mass=1,spin=0,time=0,rotate=false){
+ const r=kerrRadius(p,spin*mass),rh=1+Math.sqrt(1-spin*spin),phase=rotate?time*spin/(2*rh*mass):0;
+ const u=((Math.atan2(-p[2],p[0])-phase)/(2*Math.PI)+.5)%1;
+ const v=Math.acos(Math.max(-1,Math.min(1,p[1]/r)))/Math.PI;
+ return {u:(u+1)%1,v,sector:Math.min(7,Math.floor(((u+1)%1)*8)),band:Math.min(3,Math.floor(v*4))};
+}
+function createHorizonUVTexture(){
+ const c=document.createElement('canvas');c.width=2048;c.height=1024;
+ const ctx=c.getContext('2d'),cw=c.width/8,ch=c.height/4;
+ for(let row=0;row<4;row++)for(let col=0;col<8;col++){
+  const x=col*cw,y=row*ch;ctx.fillStyle=`hsl(${col*43+row*7} 65% ${row<2?57:34}%)`;ctx.fillRect(x,y,cw,ch);
+  ctx.strokeStyle='#0b111c';ctx.lineWidth=7;ctx.strokeRect(x,y,cw,ch);ctx.strokeStyle='#fff8dc99';ctx.lineWidth=2;ctx.strokeRect(x+7,y+7,cw-14,ch-14);
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fffbed';ctx.strokeStyle='#0b111c';ctx.lineWidth=7;ctx.font='bold 72px sans-serif';const label=String.fromCharCode(65+col)+(row+1);ctx.strokeText(label,x+cw/2,y+ch*.45);ctx.fillText(label,x+cw/2,y+ch*.45);
+  ctx.font='bold 24px sans-serif';ctx.lineWidth=4;ctx.strokeText(row<2?'NORTH':'SOUTH',x+cw/2,y+ch*.18);ctx.fillText(row<2?'NORTH':'SOUTH',x+cw/2,y+ch*.18);
+  ctx.font='19px monospace';ctx.strokeText('U →   V ↓',x+cw/2,y+ch*.76);ctx.fillText('U →   V ↓',x+cw/2,y+ch*.76);
+ }
+ return c;
+}
+function drawHorizonUVReference(canvas){
+ canvas.width=640;canvas.height=320;const ctx=canvas.getContext('2d');ctx.drawImage(createHorizonUVTexture(),0,0,640,320);
+}
+
+return {horizonUVAt,createHorizonUVTexture,drawHorizonUVReference};})();
+modules['geometry']=(()=>{
+const {traceKerrRay,horizonRadius}=modules['kerr'];
+const {iscoRadius,photonRadius}=modules['orbits'];
+const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,k)=>a.map(v=>v*k),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),len=a=>Math.hypot(...a),norm=a=>mul(a,1/(len(a)||1));
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+
+// Coordinate-space null geodesic, integrated independently of display projection.
+// Starting velocity is constructed from the static observer's orthonormal frame.
+function traceRay(camera,direction,mass,charge,{lensing=true,step=.035,maxSteps=2200,spin=0}={}){
+ if(charge===0&&spin>0)return traceKerrRay(camera,direction,mass,spin,{lensing,step:step*.7,maxSteps:maxSteps*2});
+ let p=[...camera];const radial=norm(p),r0=len(p),f=1-2*mass/r0+charge*charge*mass*mass/(r0*r0);
+ let v=lensing?add(direction,mul(radial,dot(direction,radial)*(Math.sqrt(Math.max(f,.0001))-1))):[...direction];
+ const angular=cross(p,v),L2=dot(angular,angular),Q2=charge*charge*mass*mass,points=[[...p]],cutoff=(charge===0?2.0001:.035)*mass;
+ const acceleration=x=>{const r=Math.max(len(x),.00001*mass);return lensing?mul(x,(-3*mass+2*Q2/r)*L2/Math.pow(r,5)):[0,0,0];};
+ let status='budget',maxError=0,minRadius=r0,iterations=0;const initialEnergy=dot(p,v)**2/(r0*r0)+f*L2/(r0*r0);
+ for(let i=0;i<maxSteps;i++){
+  const r=len(p);minRadius=Math.min(minRadius,r);iterations=i+1;if(r<cutoff){status=charge===0?'horizon':'core';break;}
+  if(r>Math.max(55,r0+35)&&dot(p,v)>0){status='escaped';break;}
+  const a=acceleration(p),h=Math.min(Math.max(r*step,.00003*mass)/Math.max(len(v),1),Math.sqrt(.015*r/(len(a)+1e-20)),1.4);
+  const next=add(add(p,mul(v,h)),mul(a,.5*h*h));const nv=add(v,mul(add(a,acceleration(next)),h*.5));
+  if(!next.every(Number.isFinite)||!nv.every(Number.isFinite)){status='cutoff';break;}
+  p=next;v=nv;if(i%2===0)points.push([...p]);
+  if(lensing){const nr=len(p),energy=Math.pow(dot(p,v)/nr,2)+(1-2*mass/nr+Q2/(nr*nr))*L2/(nr*nr);maxError=Math.max(maxError,Math.abs(energy-initialEnergy)/(initialEnergy||1));}
+ }
+ if(len(sub(p,points.at(-1)))>1e-10)points.push([...p]);return {points,status,maxError,minRadius,iterations};
+}
+
+class GeometryRenderer{
+ constructor(gl){
+  this.gl=gl;this.key='';this.traceKey='';this.paths=[];
+  const vs=`#version 300 es\nprecision highp float;in vec3 position;in vec4 color;out vec4 lineColor;uniform vec3 eye,right,up,forward;uniform float tanFov,aspect,pointSize;void main(){vec3 p=position-eye;float z=dot(p,forward);gl_Position=vec4(dot(p,right)/(tanFov*aspect),dot(p,up)/tanFov,1.0002*z-.10001,z);gl_PointSize=pointSize;lineColor=color;}`;
+  const fs=`#version 300 es\nprecision highp float;in vec4 lineColor;uniform bool pointMode;out vec4 fragColor;void main(){if(pointMode&&length(gl_PointCoord-vec2(.5))>.5)discard;fragColor=lineColor;}`;
+  const shader=(type,source)=>{const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
+  this.program=gl.createProgram();gl.attachShader(this.program,shader(gl.VERTEX_SHADER,vs));gl.attachShader(this.program,shader(gl.FRAGMENT_SHADER,fs));gl.linkProgram(this.program);if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
+  this.vao=gl.createVertexArray();gl.bindVertexArray(this.vao);this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);
+  const p=gl.getAttribLocation(this.program,'position'),c=gl.getAttribLocation(this.program,'color');gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(c);gl.vertexAttribPointer(c,4,gl.FLOAT,false,28,12);
+  this.uniforms={};for(const n of ['eye','right','up','forward','tanFov','aspect','pointMode','pointSize'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
+  this.pointVao=gl.createVertexArray();gl.bindVertexArray(this.pointVao);this.pointBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(c);gl.vertexAttribPointer(c,4,gl.FLOAT,false,28,12);
+ }
+ renderCustom({lines,points,pointSize=5},view){
+  const gl=this.gl;
+  // This shares the line buffer with the ray view; invalidate its cached mesh.
+  this.key='';
+  gl.clearColor(.025,.034,.032,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(this.program);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.uniform3fv(this.uniforms.eye,view.camera);for(const n of ['right','up','forward'])gl.uniform3fv(this.uniforms[n],view[n]);
+  gl.uniform1f(this.uniforms.tanFov,Math.tan(52*Math.PI/360));gl.uniform1f(this.uniforms.aspect,gl.canvas.clientWidth/gl.canvas.clientHeight);
+  gl.uniform1f(this.uniforms.pointSize,Math.max(4,pointSize*gl.canvas.width/gl.canvas.clientWidth));
+  gl.bindVertexArray(this.vao);gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(lines),gl.DYNAMIC_DRAW);
+  gl.uniform1i(this.uniforms.pointMode,0);gl.drawArrays(gl.LINES,0,lines.length/7);
+  if(points.length){gl.bindVertexArray(this.pointVao);gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(points),gl.DYNAMIC_DRAW);gl.uniform1i(this.uniforms.pointMode,1);gl.drawArrays(gl.POINTS,0,points.length/7);}
+  gl.disable(gl.BLEND);
+ }
+
+ build(state,b,debug,aspect){
+  const signature=JSON.stringify([state.mass,state.charge,state.spin,state.blackhole,state.lensing,state.disk,state.diskRadius,state.fov,state.cubes,b,debug,aspect]);if(signature===this.key)return;this.key=signature;
+  const vertices=[],line=(a,c,color)=>{vertices.push(...a,...color,...c,...color);};
+  const sphere=(radius,color)=>{
+   if(radius<=0)return;
+   for(let plane=0;plane<3;plane++)for(let i=0;i<96;i++){
+    const point=t=>{const a=t/96*Math.PI*2,p=[Math.cos(a)*radius,Math.sin(a)*radius,0];return plane===0?p:plane===1?[p[0],0,p[1]]:[0,p[0],p[1]];};line(point(i),point(i+1),color);
+   }
+   for(const lat of [-.6,.6])for(let i=0;i<64;i++){const point=t=>{const a=t/64*Math.PI*2;return [Math.cos(a)*radius*.8,lat*radius,Math.sin(a)*radius*.8];};line(point(i),point(i+1),color);}
+  };
+  if(debug.grid){const extent=28;for(let i=-extent;i<=extent;i+=2){line([-extent,-.025,i],[extent,-.025,i],[.35,.44,.34,i===0?.3:.10]);line([i,-.025,-extent],[i,-.025,extent],[.35,.44,.34,i===0?.3:.10]);}line([0,0,0],[8,0,0],[.85,.38,.29,.7]);line([0,0,0],[0,8,0],[.55,.76,.43,.7]);line([0,0,0],[0,0,8],[.35,.57,.85,.7]);}
+  if(debug.center){const d=.7*state.mass;for(const axis of [[d,0,0],[0,d,0],[0,0,d]])line(mul(axis,-1),axis,[1.,.9,.72,.95]);sphere(.17*state.mass,[1.,.84,.55,.8]);}
+  if(debug.rs){
+   if(state.blackhole&&state.spin>0){const r=horizonRadius(state.spin)*state.mass,rho=Math.sqrt(r*r+(state.spin*state.mass)**2);for(let row=0;row<9;row++)for(let i=0;i<96;i++){const point=t=>{const theta=row*Math.PI/8,phi=t*Math.PI/48;return [rho*Math.sin(theta)*Math.cos(phi),r*Math.cos(theta),rho*Math.sin(theta)*Math.sin(phi)];};line(point(i),point(i+1),[.93,.44,.30,.55]);}for(let j=0;j<16;j++)for(let i=0;i<64;i++){const point=t=>[rho*Math.sin(t*Math.PI/64)*Math.cos(j*Math.PI/8),r*Math.cos(t*Math.PI/64),rho*Math.sin(t*Math.PI/64)*Math.sin(j*Math.PI/8)];line(point(i),point(i+1),[.93,.44,.30,.55]);}}
+   else sphere(2*state.mass,[.93,.44,.30,.55]);
+  }
+  if(debug.photon&&state.blackhole&&state.spin>0){for(const direction of [-1,1]){const r=photonRadius(state.spin,direction),rho=Math.sqrt(r*r+state.spin*state.spin)*state.mass;for(let i=0;i<128;i++){const point=t=>[rho*Math.cos(t*Math.PI/64),0,rho*Math.sin(t*Math.PI/64)];line(point(i),point(i+1),[.47,.75,.88,.6]);}}}
+  else if(debug.photon){const q=state.blackhole?0:state.charge,disc=9-8*q*q;if(disc>=0){sphere((3+Math.sqrt(disc))*.5*state.mass,[.47,.75,.88,.5]);if(q>0)sphere((3-Math.sqrt(disc))*.5*state.mass,[.47,.75,.88,.25]);}}
+  if(state.disk)for(const r of [state.blackhole?iscoRadius(state.spin||0):2.15,state.diskRadius])for(let i=0;i<100;i++){const rho=Math.sqrt(r*r+(state.blackhole?(state.spin||0)**2:0))*state.mass,p=t=>[Math.cos(t/100*Math.PI*2)*rho,0,Math.sin(t/100*Math.PI*2)*rho];line(p(i),p(i+1),[.8,.55,.28,.35]);}
+  if(debug.frustum){const tan=Math.tan(state.fov*Math.PI/360),planes=[.6,Math.min(9,len(b.camera)*.7)].map(distance=>{const center=add(b.camera,mul(b.forward,distance));return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>add(center,add(mul(b.right,x*tan*distance*aspect),mul(b.up,y*tan*distance))));});for(let i=0;i<4;i++){line(planes[0][i],planes[0][(i+1)%4],[.8,.85,.65,.9]);line(planes[1][i],planes[1][(i+1)%4],[.8,.85,.65,.2]);line(b.camera,planes[1][i],[.8,.85,.65,.25]);}const r=.2;for(const a of [b.right,b.up,b.forward])line(add(b.camera,mul(a,-r)),add(b.camera,mul(a,r)),[.95,.95,.75,1]);}
+  for(const cube of state.cubes){const rgb=cube.color.match(/\w\w/g).map(v=>parseInt(v,16)/255),corners=Array.from({length:8},(_,i)=>add(cube.position,[(i&1?1:-1)*cube.size/2,(i&2?1:-1)*cube.size/2,(i&4?1:-1)*cube.size/2]));for(let i=0;i<8;i++)for(let bit=1;bit<=4;bit*=2)if(!(i&bit))line(corners[i],corners[i|bit],[...rgb,.8]);}
+  if(debug.rays){
+   const traceKey=JSON.stringify([b,state.mass,state.charge,state.spin,state.blackhole,state.lensing,state.fov,debug.density,aspect]);
+   if(traceKey!==this.traceKey){this.traceKey=traceKey;this.paths=[];const n=debug.density,tan=Math.tan(state.fov*Math.PI/360);
+    // A central bundle samples the observer's image plane; the frustum still
+    // outlines the complete image. Rays are traced backwards from the eye.
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++){const sx=(x/(n-1)*2-1)*.48,sy=(y/(n-1)*2-1)*.34;const direction=norm(add(b.forward,add(mul(b.right,sx*tan*aspect),mul(b.up,sy*tan))));const ray=traceRay(b.camera,direction,state.mass,state.blackhole?0:state.charge,{lensing:state.lensing,spin:state.blackhole?state.spin:0});this.paths.push({...ray,central:x===(n-1)/2&&y===(n-1)/2});}
+   }
+   for(const path of this.paths)for(let i=0;i<path.points.length-1;i++){const radius=len(path.points[i])/state.mass,heat=Math.exp(-radius*.13);const color=path.central?[1.,.9,.55,.95]:[.30+.65*heat,.78-.25*heat,.82-.62*heat,.30+.5*heat];line(path.points[i],path.points[i+1],color);}
+  }
+  this.count=vertices.length/7;const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
+ }
+ render(state,observer,debug,view,{clear=false,aspect=this.gl.canvas.clientWidth/this.gl.canvas.clientHeight}={}){
+  const gl=this.gl;this.build(state,observer,debug,aspect);
+  if(clear){gl.clearColor(.025,.034,.032,1);gl.clear(gl.COLOR_BUFFER_BIT);}
+  gl.useProgram(this.program);gl.bindVertexArray(this.vao);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.uniform3fv(this.uniforms.eye,view.camera);for(const n of ['right','up','forward'])gl.uniform3fv(this.uniforms[n],view[n]);gl.uniform1f(this.uniforms.tanFov,Math.tan((clear?52:state.fov)*Math.PI/360));gl.uniform1f(this.uniforms.aspect,aspect);gl.uniform1f(this.uniforms.pointSize,4);gl.uniform1i(this.uniforms.pointMode,0);gl.drawArrays(gl.LINES,0,this.count);
+  if(debug.rays&&this.paths.length){const points=[];this.paths.forEach((path,i)=>{const index=Math.floor(((state.time*.16+i*.071)%1)*(path.points.length-1));points.push(...path.points[index],1.,.93,.72,.95);});gl.bindVertexArray(this.pointVao);gl.bindBuffer(gl.ARRAY_BUFFER,this.pointBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(points),gl.DYNAMIC_DRAW);gl.uniform1i(this.uniforms.pointMode,1);gl.drawArrays(gl.POINTS,0,points.length/7);}
+  gl.disable(gl.BLEND);
+ }
+}
+
+return {traceRay,GeometryRenderer};})();
+modules['renderer']=(()=>{
+const {createDiskUVTexture}=modules['disk-uv'];
+const {createHorizonUVTexture}=modules['horizon-uv'];
+const {kerrGLSL,horizonRadius}=modules['kerr'];
+const {iscoRadius}=modules['orbits'];
+// Geometric units: G = c = 1. The spatial affine-parameter equation is
+// x'' = (-3 M / r^5 + 2 Q^2 / r^6) |x × x'|^2 x.
+// It follows from r'^2 = E^2 - (1 - 2M/r + Q^2/r^2) L^2/r^2.
+const vertex = `#version 300 es
+in vec2 position;
+out vec2 uv;
+void main(){uv=position*.5+.5;gl_Position=vec4(position,0.,1.);}`;
+
+const fragment = `#version 300 es
+precision highp float;
+in vec2 uv;
+out vec4 fragColor;
+uniform vec2 resolution;
+uniform vec3 camera,forward,right,up;
+uniform float fov,mass,charge,time,exposure,brightness,diskRadius,skyRotation,spin,horizonR,diskInner;
+uniform bool disk,lensing,blackhole,nasaReady,diskUV,diskUVRotate,horizonUV,horizonUVRotate;
+uniform int skyMode,steps,cubeCount,diagnostic;
+uniform vec4 cubes[8];
+uniform vec3 colors[8];
+uniform sampler2D skyTexture,diskUVTexture,horizonUVTexture;
+const float PI=3.14159265359;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
+float fbm(vec2 p){float a=.5,v=0.;for(int i=0;i<4;i++){v+=a*noise(p);p=mat2(.8,-.6,.6,.8)*p*2.1;a*=.5;}return v;}
+vec3 heat(float x){return clamp(vec3(1.5)-abs(vec3(4.*x-3.,4.*x-2.,4.*x-1.)),0.,1.);}
+vec2 sphereUV(vec3 d){return vec2(atan(d.z,d.x)/(2.*PI)+.5,acos(clamp(d.y,-1.,1.))/PI);}
+vec3 night(vec3 d){
+ vec2 p=sphereUV(d);float band=exp(-pow((d.y*.82+d.x*.42+d.z*.2)/.19,2.));
+ float cloud=fbm(p*vec2(17.,11.));float dust=fbm(p*vec2(65.,38.)+3.);
+ vec3 col=vec3(.004,.007,.014)+band*(vec3(.075,.065,.068)*cloud+vec3(.025,.034,.058)*dust);
+ col+=vec3(.022,.012,.008)*pow(cloud,3.)*band;
+ for(int i=0;i<3;i++){
+  float scale=360.+float(i)*360.;vec2 gp=p*vec2(scale,scale*.5);vec2 cell=floor(gp);vec2 pt=fract(gp)-vec2(hash(cell+13.),hash(cell+37.));
+  float h=hash(cell+float(i)*7.);float star=exp(-dot(pt,pt)*(i==0?110.:230.))*step(i==0?.963:.986,h);
+  vec3 tint=mix(vec3(.65,.78,1.),vec3(1.,.80,.56),hash(cell+43.));col+=tint*star*(.45+2.*h)*(.9+.1*sin(time*.15+h*35.));
+ }
+ return col;
+}
+vec3 voxel(vec3 d){
+ vec2 p=sphereUV(d);vec3 col=mix(vec3(.72,.86,.92),vec3(.18,.43,.76),smoothstep(-.08,.85,d.y));
+ vec3 sunDir=normalize(vec3(-.5,.55,-.7));vec2 sunUv=vec2(atan(sunDir.z,sunDir.x)/(2.*PI)+.5,acos(sunDir.y)/PI);
+ vec2 sd=abs(p-sunUv);if(max(sd.x*2.,sd.y)<.022)col=vec3(1.,.97,.75);
+ vec2 cloudCell=floor(p*vec2(100.,55.));float clouds=noise(floor(cloudCell/vec2(4.,2.)));if(d.y>.12&&d.y<.58&&clouds>.57)col=mix(vec3(.70,.77,.79),vec3(.96,.97,.93),smoothstep(.12,.6,d.y));
+ float terrain=-.025+floor(noise(vec2(floor(p.x*120.)*.15,3.))*7.)*.016;
+ if(d.y<terrain){float tile=hash(floor(p*vec2(520.,300.)));col=mix(vec3(.17,.28,.13),vec3(.32,.43,.21),tile);if(d.y<terrain-.06)col=mix(vec3(.22,.16,.10),vec3(.35,.28,.18),tile);}
+ return col;
+}
+vec3 cubeUV(vec3 d){
+ vec3 a=abs(d);vec2 st;float face;
+ if(a.x>=a.y&&a.x>=a.z){if(d.x>0.){face=0.;st=vec2(-d.z,-d.y)/a.x;}else{face=1.;st=vec2(d.z,-d.y)/a.x;}}
+ else if(a.y>=a.z){if(d.y>0.){face=2.;st=vec2(d.x,d.z)/a.y;}else{face=3.;st=vec2(d.x,-d.z)/a.y;}}
+ else{if(d.z>0.){face=4.;st=vec2(d.x,-d.y)/a.z;}else{face=5.;st=vec2(-d.x,-d.y)/a.z;}}
+ st=clamp(st*.5+.5,vec2(.001),vec2(.999));return texture(skyTexture,vec2((face+st.x)/6.,st.y)).rgb;
+}
+vec3 environment(vec3 d){
+ if(skyMode==5)return vec3(.0015,.002,.0025);
+ float cs=cos(skyRotation),sn=sin(skyRotation);d=vec3(cs*d.x-sn*d.z,d.y,sn*d.x+cs*d.z);
+ if(skyMode==0){if(nasaReady)return pow(texture(skyTexture,sphereUV(d)).rgb,vec3(2.2))*1.8;return night(d);}if(skyMode==2)return voxel(d);if(skyMode==3)return pow(texture(skyTexture,sphereUV(d)).rgb,vec3(2.2));return pow(cubeUV(d),vec3(2.2));
+}
+bool intersectCube(vec3 p,vec3 v,float segment,vec4 box,out vec3 normal,out vec3 hit){
+ vec3 inv=1./(v+vec3(1e-10));vec3 lo=(box.xyz-box.w*.5-p)*inv,hi=(box.xyz+box.w*.5-p)*inv;
+ vec3 entry=min(lo,hi),exit=max(lo,hi);float near=max(max(entry.x,entry.y),entry.z),far=min(min(exit.x,exit.y),exit.z);
+ if(far<max(near,0.)||near>segment)return false;
+ float t=max(near,0.);hit=p+v*t;vec3 q=(hit-box.xyz)/(box.w*.5);vec3 aq=abs(q);
+ if(aq.x>aq.y&&aq.x>aq.z)normal=vec3(sign(q.x),0,0);else if(aq.y>aq.z)normal=vec3(0,sign(q.y),0);else normal=vec3(0,0,sign(q.z));return true;
+}
+vec3 acceleration(vec3 p,float L2,float Q2){float r=max(length(p),.025*mass);return p*((-3.*mass+2.*Q2/r)*L2/pow(r,5.));}
+${kerrGLSL}
+void main(){
+ vec2 screen=(uv*2.-1.);screen.x*=resolution.x/resolution.y;
+ vec3 dir=normalize(forward+(screen.x*right+screen.y*up)*tan(fov*.5));
+ vec3 p=camera;float r0=length(p);vec3 radial=p/r0;float f=1.-2.*mass/r0+charge*charge*mass*mass/(r0*r0);
+ vec3 v=dir+radial*dot(dir,radial)*(sqrt(max(f,.0001))-1.);
+ bool rotating=blackhole&&spin>.00001,curvedKerr=rotating&&lensing;float aK=-spin*mass;
+ vec3 momentum=curvedKerr?kerrInit(p,dir,aK):vec3(0);
+ if(curvedKerr){vec3 force;kerrFlow(p,momentum,aK,v,force);}
+ vec3 initialDirection=lensing?normalize(v):dir;
+ float L2=dot(cross(p,v),cross(p,v));float Q2=charge*charge*mass*mass;
+ vec3 emission=vec3(0);float transmittance=1.;vec3 finalCol=vec3(0);bool finished=false;
+ float minRadius=r0;int stepCount=0,crossingCount=0,fate=0;vec2 horizonST=vec2(0);bool horizonHit=false;
+ for(int i=0;i<768;i++){
+  if(i>=steps)break;
+  float r=rotating?kerrR(p,aK):length(p);
+  vec3 kerrForce=vec3(0);if(curvedKerr)kerrFlow(p,momentum,aK,v,kerrForce);
+  minRadius=min(minRadius,r);stepCount=i+1;
+  if(r<(blackhole?horizonR*1.0005:.035)*mass){
+   fate=blackhole?2:3;
+   if(blackhole&&horizonUV&&diagnostic==0){float angle=atan(-p.z,p.x)-(horizonUVRotate?time*spin/(2.*horizonR*mass):0.);horizonST=vec2(fract(angle/(2.*PI)+.5),acos(clamp(p.y/r,-1.,1.))/PI);horizonHit=true;}
+   finished=true;break;
+  }
+  if(r>70.+r0&&dot(p,v)>0.){fate=1;if(diagnostic==0)finalCol=environment(normalize(v));finished=true;break;}
+  float qualityStep=steps>300?.065:(steps>180?.10:.16);
+  float h=clamp(r*qualityStep*(curvedKerr?.6:1.),.002*mass,2.*mass)/max(length(v),1.);
+  // Schwarzschild/RN use Verlet. Kerr uses fourth-order Hamiltonian steps.
+  vec3 a=lensing?acceleration(p,L2,Q2):vec3(0);
+  if(!lensing)v=dir;
+  vec3 next=p+v*h+.5*a*h*h;
+  vec3 nextV=v+.5*(a+(lensing?acceleration(next,L2,Q2):vec3(0)))*h;
+  if(curvedKerr){vec3 bx,bp,cx,cp,dx,dp;kerrFlow(p+.5*h*v,momentum+.5*h*kerrForce,aK,bx,bp);kerrFlow(p+.5*h*bx,momentum+.5*h*bp,aK,cx,cp);kerrFlow(p+h*cx,momentum+h*cp,aK,dx,dp);next=p+h*(v+2.*bx+2.*cx+dx)/6.;momentum+=h*(kerrForce+2.*bp+2.*cp+dp)/6.;nextV=dx;}
+  // Resolve horizon coordinates at the captured segment, rather than mapping a
+  // step-dependent interior point onto the debug texture.
+  if(blackhole&&(rotating?kerrR(next,aK):length(next))<horizonR*mass*1.0005){float lo=0.,hi=1.;for(int j=0;j<12;j++){float t=(lo+hi)*.5;vec3 q=mix(p,next,t);if((rotating?kerrR(q,aK):length(q))>horizonR*mass*1.00045)lo=t;else hi=t;}next=mix(p,next,hi);}
+
+  vec3 segment=next-p;float segmentLength=length(segment);vec3 sd=segment/max(segmentLength,1e-8);
+  float best=1e10;vec3 cubeHit=vec3(0),cubeNormal=vec3(0),cubeColor=vec3(0);bool hitCube=false;
+  for(int j=0;j<8;j++){
+   if(j>=cubeCount)break;
+   if(distance(p,cubes[j].xyz)>segmentLength+cubes[j].w)continue;
+   vec3 n,hit;if(intersectCube(p,sd,segmentLength,cubes[j],n,hit)){float dist=distance(p,hit);if(dist<best){best=dist;cubeHit=hit;cubeNormal=n;cubeColor=colors[j];hitCube=true;}}
+  }
+  float diskT=1e10;vec3 dp=vec3(0);
+  if(disk&&((p.y>0.&&next.y<=0.)||(p.y<0.&&next.y>=0.))&&abs(segment.y)>1e-8){float t=-p.y/segment.y;dp=p+segment*t;float dr=(rotating?sqrt(max(dot(dp.xz,dp.xz)-spin*spin*mass*mass,0.)):length(dp.xz))/mass;if(dr>(blackhole?diskInner:2.15)&&dr<diskRadius)diskT=t*segmentLength;}
+  if(diskT<best){
+   crossingCount++;
+   float inner=blackhole?diskInner:2.15;
+   float dr=(rotating?sqrt(max(dot(dp.xz,dp.xz)-spin*spin*mass*mass,0.)):length(dp.xz))/mass,ang=atan(dp.z,dp.x);float profile=pow(inner/dr,1.65)*smoothstep(inner,inner+.45,dr)*(1.-smoothstep(diskRadius-1.5,diskRadius,dr));
+   // Advect every visible feature together. Inner material rotates faster;
+   // this is an illustrative angular rate, not an accretion dynamics model.
+   float omega=1.35*pow(inner/max(dr,inner),1.5);
+   float phase=ang+(rotating?1.:-1.)*time*omega;
+   if(diskUV&&diagnostic==0){
+    float u=fract((diskUVRotate?phase:ang)/(2.*PI)+.5);
+    float v=clamp((dr-inner)/(diskRadius-inner),.001,.999);
+    // An opaque first-hit diagnostic makes every repeated image identifiable,
+    // without superimposed disk layers or Doppler tint obscuring cell labels.
+    bool topFace=sd.y<0.;
+    float atlasV=(v+(topFace?0.:1.))*.5;
+    finalCol=pow(texture(diskUVTexture,vec2(u,atlasV)).rgb,vec3(2.2))*1.5;
+    emission=vec3(0);transmittance=1.;finished=true;break;
+   }
+   float spiral=phase*3.+dr*1.35;
+   float rings=.62+.24*sin(dr*23.+sin(spiral)*2.);
+   // Circular coordinates keep turbulence continuous across the angular seam.
+   vec2 flow=vec2(cos(phase),sin(phase))*(4.+dr*.35);
+   float swirl=.4+.75*noise(flow+vec2(dr*2.3));
+   float ribbons=pow(.5+.5*cos(spiral),5.);
+   float doppler=clamp(1.+.48*dot(sd,(rotating?-1.:1.)*normalize(vec3(-dp.z,0,dp.x)))*sqrt(3./dr),.3,1.8);
+   float intensity=profile*(rings*swirl+.55*ribbons)*brightness*doppler*2.7;
+   vec3 hot=mix(vec3(1.,.19,.035),vec3(1.,.78,.42),clamp(pow(inner/dr,.75),0.,1.));
+   if(sd.y>0.)hot=mix(vec3(.045,.19,1.),vec3(.30,.85,1.),clamp(pow(inner/dr,.75),0.,1.));
+   emission+=transmittance*hot*intensity;transmittance*=exp(-intensity*.52);
+  }
+  if(hitCube){
+   vec3 local=cubeHit;vec3 n=cubeNormal;vec2 coord=abs(n.y)>.5?local.xz:(abs(n.x)>.5?local.zy:local.xy);
+   float grid=min(abs(fract(coord.x*2.)-.5),abs(fract(coord.y*2.)-.5));float shade=.35+.65*max(dot(n,normalize(vec3(-.4,.8,.5))),0.);
+   finalCol=cubeColor*shade*(grid<.025?.5:1.);fate=4;finished=true;break;
+  }
+  p=next;v=nextV;
+  if(transmittance<.008&&diagnostic==0){finished=true;break;}
+ }
+ // Sample after the divergent march: neighboring pixels can reach the horizon
+ // on different iterations, so implicit texture derivatives inside the loop
+ // would be undefined and produce unstable mip levels.
+ if(horizonUV){vec3 sampled=pow(texture(horizonUVTexture,horizonST).rgb,vec3(2.2))*1.5;if(horizonHit)finalCol=sampled;}
+ if(diagnostic>0){
+  vec3 debugColor=vec3(0);
+  if(diagnostic==1)debugColor=heat(float(stepCount)/float(steps));
+  else if(diagnostic==2)debugColor=heat(1.-clamp(minRadius/(12.*mass),0.,1.));
+  else if(diagnostic==3){float angle=acos(clamp(dot(initialDirection,normalize(v)),-1.,1.));debugColor=heat(angle/PI);}
+  else if(diagnostic==4){debugColor=crossingCount==0?vec3(.035,.055,.075):crossingCount==1?vec3(.15,.65,.90):crossingCount==2?vec3(.98,.69,.19):vec3(.94,.24,.49);}
+  else if(diagnostic==5){debugColor=fate==1?vec3(.20,.72,.62):fate==2?vec3(.025,.03,.04):fate==3?vec3(.76,.30,.89):fate==4?vec3(.98,.78,.25):vec3(.90,.22,.18);}
+  fragColor=vec4(debugColor,1.);return;
+ }
+ // Rays still trapped after the step budget are left dark rather than assigned an unphysical escape direction.
+ vec3 col=emission+transmittance*finalCol;
+ col=vec3(1.)-exp(-col*exposure);
+ col=pow(max(col,vec3(0)),vec3(1./2.2));
+ float vignette=1.-.16*pow(length((uv-.5)*1.15),2.);col*=vignette;
+ fragColor=vec4(col,1.);
+}`;
+
+class Renderer {
+  constructor(canvas) {
+    this.canvas=canvas;
+    this.gl=canvas.getContext('webgl2',{alpha:false,antialias:false,preserveDrawingBuffer:true,powerPreference:'high-performance'});
+    if(!this.gl)throw new Error('This experiment needs WebGL 2. Enable hardware acceleration or try a recent version of Chrome, Firefox, Safari, or Edge.');
+    const gl=this.gl;
+    const compile=(kind,source)=>{const s=gl.createShader(kind);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
+    this.program=gl.createProgram();gl.attachShader(this.program,compile(gl.VERTEX_SHADER,vertex));gl.attachShader(this.program,compile(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(this.program);
+    if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
+    gl.useProgram(this.program);this.vao=gl.createVertexArray();gl.bindVertexArray(this.vao);const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(this.program,'position');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    this.uniforms={};for(const name of ['resolution','camera','forward','right','up','fov','mass','charge','time','exposure','brightness','diskRadius','skyRotation','spin','horizonR','diskInner','horizonUV','horizonUVRotate','horizonUVTexture','disk','lensing','blackhole','nasaReady','diskUV','diskUVRotate','skyMode','steps','cubeCount','diagnostic','cubes[0]','colors[0]','skyTexture','diskUVTexture'])this.uniforms[name]=gl.getUniformLocation(this.program,name);
+    this.texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([20,20,20,255]));
+    this.diskTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.diskTexture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,createDiskUVTexture());gl.generateMipmap(gl.TEXTURE_2D);
+    this.horizonTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.horizonTexture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,createHorizonUVTexture());gl.generateMipmap(gl.TEXTURE_2D);
+
+  }
+  upload(image){const gl=this.gl;gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);if(gl.getError()!==gl.NO_ERROR)throw new Error('The GPU could not load this image. Try a smaller image.');}
+  render(state,basis){
+    const gl=this.gl,u=this.uniforms;const presets={low:[.5,144],medium:[.7,240],high:[1,360]};let [scale,steps]=presets[state.quality];if(state.blackhole&&state.spin>0){steps=Math.round(steps*1.7);scale*=.85;}
+    const rect=this.canvas.getBoundingClientRect(),ratio=Math.min(devicePixelRatio,1.5)*scale;const w=Math.max(1,Math.floor(rect.width*ratio)),h=Math.max(1,Math.floor(rect.height*ratio));
+    if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;gl.viewport(0,0,w,h);}
+    gl.useProgram(this.program);gl.bindVertexArray(this.vao);gl.uniform2f(u.resolution,w,h);
+    for(const name of ['camera','forward','right','up'])gl.uniform3fv(u[name],basis[name]);
+    for(const name of ['mass','time','exposure','brightness','diskRadius'])gl.uniform1f(u[name],state[name]);
+    gl.uniform1f(u.spin,state.blackhole?(state.spin||0):0);gl.uniform1f(u.horizonR,horizonRadius(state.blackhole?(state.spin||0):0));gl.uniform1f(u.diskInner,iscoRadius(state.blackhole?(state.spin||0):0));gl.uniform1i(u.horizonUV,state.blackhole&&state.horizonUV?1:0);gl.uniform1i(u.horizonUVRotate,state.horizonUVRotate?1:0);
+    gl.uniform1f(u.charge,state.blackhole?0:state.charge);gl.uniform1i(u.blackhole,state.blackhole?1:0);gl.uniform1i(u.nasaReady,state.nasaReady?1:0);
+    gl.uniform1f(u.fov,state.fov*Math.PI/180);gl.uniform1f(u.skyRotation,state.skyRotation*Math.PI/180);
+    gl.uniform1i(u.disk,state.disk?1:0);gl.uniform1i(u.diskUV,state.diskUV?1:0);gl.uniform1i(u.diskUVRotate,state.diskUVRotate?1:0);gl.uniform1i(u.lensing,state.lensing?1:0);gl.uniform1i(u.skyMode,state.skyMode);gl.uniform1i(u.steps,steps);gl.uniform1i(u.cubeCount,state.cubes.length);gl.uniform1i(u.diagnostic,state.diagnostic||0);
+    if(state.cubes.length){gl.uniform4fv(u['cubes[0]'],new Float32Array(state.cubes.flatMap(c=>[...c.position,c.size])));gl.uniform3fv(u['colors[0]'],new Float32Array(state.cubes.flatMap(c=>c.color.match(/\w\w/g).map(v=>Math.pow(parseInt(v,16)/255,2.2)))));}
+    gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,this.horizonTexture);gl.uniform1i(u.horizonUVTexture,2);
+    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.diskTexture);gl.uniform1i(u.diskUVTexture,1);
+    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.uniform1i(u.skyTexture,0);
+    if(state.compare){
+      const left=Math.floor(w/2);gl.viewport(0,0,left,h);gl.uniform2f(u.resolution,left,h);gl.uniform1i(u.lensing,1);gl.drawArrays(gl.TRIANGLES,0,3);
+      gl.viewport(left,0,w-left,h);gl.uniform2f(u.resolution,w-left,h);gl.uniform1i(u.lensing,0);gl.drawArrays(gl.TRIANGLES,0,3);gl.viewport(0,0,w,h);
+    }else{gl.viewport(0,0,w,h);gl.drawArrays(gl.TRIANGLES,0,3);}
+    return [w,h];
+  }
+}
+
+return {vertex,fragment,Renderer};})();
+return modules;})();
+  </script>
+  <script>
+  (()=>{
+    const site='https://singularity-observatory.milkysiren128.chatgpt.site/';
+    const options={
+      cinematic:{name:'Black-hole render.',file:'og-black-hole-schwarzschild-nasa-v1.jpg',en:{title:'Black hole physics simulation',description:'Physical simulation for understanding gravitational lensing and other black-hole properties, including spin, orbits, and tidal effects.',alt:'An accretion disk and NASA star-map skybox distorted around a non-spinning Schwarzschild black hole.'},de:{title:'Physikalische Simulation Schwarzer Löcher',description:'Physikalische Simulation zum Verständnis von Gravitationslinsen und weiteren Eigenschaften Schwarzer Löcher: Spin, Umlaufbahnen und Gezeiteneffekte.',alt:'Eine Akkretionsscheibe und ein verzerrter Sternenhimmel um ein nicht rotierendes Schwarzschild-Loch.'}},
+      comparison:{name:'Lensing comparison.',file:'og-lensing-comparison-v1.jpg',en:{title:'Black hole physics simulation',description:'Physical simulation for understanding gravitational lensing and other black-hole properties, including spin, orbits, and tidal effects.',alt:'The same black-hole scene shown with gravitational lensing on the left and straight light paths on the right.'},de:{title:'Physikalische Simulation Schwarzer Löcher',description:'Physikalische Simulation zum Verständnis von Gravitationslinsen und weiteren Eigenschaften Schwarzer Löcher: Spin, Umlaufbahnen und Gezeiteneffekte.',alt:'Dieselbe Szene mit einem Schwarzen Loch: links mit Gravitationslinseneffekt, rechts mit geraden Lichtwegen.'}},
+      orbits:{name:'Orbit visualization.',file:'og-orbit-lab-v1.jpg',en:{title:'Black hole physics simulation',description:'Physical simulation for understanding gravitational lensing and other black-hole properties, including spin, orbits, and tidal effects.',alt:'A green stable orbit and an orange plunging trajectory around a wireframe black-hole horizon.'},de:{title:'Physikalische Simulation Schwarzer Löcher',description:'Physikalische Simulation zum Verständnis von Gravitationslinsen und weiteren Eigenschaften Schwarzer Löcher: Spin, Umlaufbahnen und Gezeiteneffekte.',alt:'Eine grüne stabile Umlaufbahn und eine orange hineinfallende Bahn um den Drahtgitter-Horizont eines Schwarzen Lochs.'}}
+    };
+    let selected='cinematic',language='en';const images={},baseImages={},$=id=>document.getElementById(id);
+    const escape=value=>String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    function metadata(){const o=options[selected],c=o[language],image=site+'assets/'+o.file;return [
+      '<title>'+escape(c.title)+'</title>',
+      '<meta name="description" content="'+escape(c.description)+'">',
+      '<link rel="canonical" href="'+site+'">','',
+      '<meta property="og:type" content="website">',
+      '<meta property="og:site_name" content="Black hole simulator">',
+      '<meta property="og:locale" content="'+(language==='de'?'de_CH':'en_GB')+'">',
+      '<meta property="og:url" content="'+site+'">',
+      '<meta property="og:title" content="'+escape(c.title)+'">',
+      '<meta property="og:description" content="'+escape(c.description)+'">',
+      '<meta property="og:image" content="'+image+'">',
+      '<meta property="og:image:type" content="image/jpeg">',
+      '<meta property="og:image:width" content="1200">',
+      '<meta property="og:image:height" content="630">',
+      '<meta property="og:image:alt" content="'+escape(c.alt)+'">','',
+      '<!-- Additional large-image card hints -->',
+      '<meta name="twitter:card" content="summary_large_image">',
+      '<meta name="twitter:title" content="'+escape(c.title)+'">',
+      '<meta name="twitter:description" content="'+escape(c.description)+'">',
+      '<meta name="twitter:image" content="'+image+'">',
+      '<meta name="twitter:image:alt" content="'+escape(c.alt)+'">'].join('\n');}
+    function update(){
+      for(const [id,o] of Object.entries(options)){
+        const c=o[language];document.querySelector('[data-title="'+id+'"]').textContent=c.title;document.querySelector('[data-description="'+id+'"]').textContent=c.description;
+        const img=document.querySelector('[data-image="'+id+'"]');img.alt=c.alt;if(images[id])img.src=images[id];
+        document.querySelector('[data-direction="'+id+'"]').classList.toggle('selected',id===selected);
+        const b=document.querySelector('[data-choose="'+id+'"]');b.setAttribute('aria-pressed',String(id===selected));b.innerHTML='<span>'+(id===selected?'Selected direction':'Choose this direction')+'</span><span>'+(id===selected?'✓':'↗')+'</span>';
+      }
+      $('langDE').setAttribute('aria-pressed',String(language==='de'));$('langEN').setAttribute('aria-pressed',String(language==='en'));
+      const o=options[selected],c=o[language];$('selectedHeading').textContent=o.name;$('imageFilename').textContent=o.file;
+      $('selectedImage').src=images[selected];$('selectedImage').alt=c.alt;$('metadata').textContent=metadata();$('copyCount').textContent=c.title.length+' title / '+c.description.length+' description chars';
+      $('downloadImage').disabled=!baseImages[selected];$('imageNote').textContent=baseImages[selected]?'Actual simulator render · 1200 × 630 JPEG · no controls or browser chrome.':'Image concept. A real simulator frame will replace it when the GPU is ready.';
+    }
+    for(const b of document.querySelectorAll('[data-choose]'))b.addEventListener('click',()=>{selected=b.dataset.choose;update();});
+    for(const lang of ['de','en'])$('lang'+lang.toUpperCase()).addEventListener('click',()=>{language=lang;for(const id of Object.keys(baseImages))finishImage(id);update();});
+    for(const layout of ['Wide','Compact'])$('layout'+layout).addEventListener('click',()=>{document.body.classList.toggle('compact',layout==='Compact');$('layoutWide').setAttribute('aria-pressed',String(layout==='Wide'));$('layoutCompact').setAttribute('aria-pressed',String(layout==='Compact'));});
+    $('copyMetadata').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(metadata());$('copyStatus').textContent='Metadata copied.';}catch{const range=document.createRange();range.selectNodeContents($('metadata'));const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);$('copyStatus').textContent='Metadata selected. Press Ctrl/Cmd+C to copy.';}});
+    $('downloadImage').addEventListener('click',()=>{if(!baseImages[selected])return;const a=document.createElement('a');a.href=images[selected];a.download=options[selected].file;a.click();});
+    function fallback(id){const common='<defs><radialGradient id="g"><stop stop-color="#7d4828"/><stop offset="1" stop-color="#070d0e"/></radialGradient><filter id="b"><feGaussianBlur stdDeviation="16"/></filter></defs><rect width="1200" height="630" fill="#080e0d"/>';
+      const hole='<ellipse cx="600" cy="330" rx="330" ry="108" fill="none" stroke="#efbd80" stroke-width="28" filter="url(#b)" transform="rotate(-12 600 330)"/><circle cx="600" cy="315" r="158" fill="#050808" stroke="#ebbb85" stroke-width="12"/><ellipse cx="600" cy="330" rx="330" ry="85" fill="none" stroke="#d7a766" stroke-width="7" transform="rotate(-12 600 330)"/>';
+      const shape=id==='orbits'?'<g fill="none" transform="translate(600 320)"><ellipse rx="340" ry="205" stroke="#6fbc86" stroke-width="5"/><ellipse rx="205" ry="125" stroke="#c6bd8e" stroke-width="2"/><circle r="90" stroke="#da8b57" stroke-width="3"/><path d="M300 -90C260 -230-130 -140-70 30S100 95 15 5" stroke="#e89b61" stroke-width="6"/></g>':id==='comparison'?'<g transform="translate(-270 100) scale(.72)">'+hole+'</g><g transform="translate(360 170) scale(.55)">'+hole+'</g><path d="M600 60V570" stroke="#738b7a" stroke-width="2"/>':hole;
+      return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">'+common+shape+'</svg>');}
+    for(const id of Object.keys(options))images[id]=fallback(id);update();
+    function finishImage(id){
+      const c=document.createElement('canvas');c.width=1200;c.height=630;const ctx=c.getContext('2d');ctx.drawImage(baseImages[id],0,0,1200,630);
+      if(id==='comparison'){
+        ctx.fillStyle='#e7dcc7';ctx.font='bold 20px Arial';ctx.textAlign='center';ctx.fillText(language==='de'?'GEKRÜMMTES LICHT':'CURVED LIGHT',300,58);ctx.fillText(language==='de'?'GERADE LICHTWEGE':'STRAIGHT LIGHT PATHS',900,58);
+        ctx.strokeStyle='#8da18c99';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(600,30);ctx.lineTo(600,600);ctx.stroke();
+      }
+      if(id==='orbits'){
+        ctx.textAlign='left';ctx.font='bold 25px Arial';ctx.fillStyle='#93d3a3';ctx.fillText(language==='de'?'STABIL':'STABLE',50,62);ctx.fillStyle='#f1b16f';ctx.fillText(language==='de'?'INSTABIL → STURZ':'UNSTABLE → PLUNGE',50,101);
+        ctx.font='17px Arial';ctx.fillStyle='#c1ccb9';ctx.fillText(language==='de'?'Radial gestörte Schwarzschild-Testteilchenbahnen':'Radially perturbed Schwarzschild test-particle orbits',50,572);
+      }
+      images[id]=c.toDataURL('image/jpeg',.9);
+    }
+    async function renderImages(){
+      try{
+        const {Renderer}=ProposalModules.renderer,{GeometryRenderer}=ProposalModules.geometry,{createOrbit,advanceOrbit,orbitGeometry}=ProposalModules.orbits;
+        const canvas=$('renderCanvas'),renderer=new Renderer(canvas);
+        const state={mass:1,charge:1.03,blackhole:true,spin:0,horizonUV:false,horizonUVRotate:false,compare:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.3,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'high',lensing:true,time:4,cubes:[],diagnostic:0};
+        if(location.protocol!=='file:'){
+          const sky=new Image();await new Promise((resolve,reject)=>{sky.onload=resolve;sky.onerror=reject;sky.src='dist/assets/nasa-starmap-8k.jpg';});renderer.upload(sky);state.nasaReady=true;
+        }
+        const mul=(a,s)=>a.map(v=>v*s),norm=a=>mul(a,1/Math.hypot(...a)),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+        function basis(theta,phi,distance){const camera=[distance*Math.sin(phi)*Math.sin(theta),distance*Math.cos(phi),distance*Math.sin(phi)*Math.cos(theta)],forward=norm(mul(camera,-1)),right=norm(cross(forward,[0,1,0]));return {camera,forward,right,up:norm(cross(right,forward))};}
+        const pause=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        function capture(id){const c=document.createElement('canvas');c.width=1200;c.height=630;c.getContext('2d').drawImage(canvas,0,0,1200,630);baseImages[id]=c;finishImage(id);update();}
+        renderer.render(state,basis(.38,1.3,23));capture('cinematic');await pause();
+        renderer.render({...state,compare:true,spin:.55,diskRadius:12},basis(.3,1.3,24));capture('comparison');await pause();
+        canvas.width=1800;canvas.height=945;renderer.gl.viewport(0,0,1800,945);
+        const geometry=new GeometryRenderer(renderer.gl),stable=createOrbit(8,0,1,1,-.01),unstable=createOrbit(4,0,1,1,-.01);
+        for(let i=0;i<300;i++){advanceOrbit(stable,.5);advanceOrbit(unstable,.5);}
+        const first=orbitGeometry(stable,{orbitTrail:true,orbitReference:false}),second=orbitGeometry(unstable,{orbitTrail:true,orbitReference:false});
+        // Recolor the actual trajectories while retaining the horizon and grid.
+        function trailLines(orbit,color){const lines=[];for(let i=1;i<orbit.trail.length;i++){const p=([r,t])=>[r*Math.cos(t),0,-r*Math.sin(t)];lines.push(...p(orbit.trail[i-1]),...color,...p(orbit.trail[i]),...color);}return lines;}
+        const lines=[...first.lines,...trailLines(stable,[.5,.9,.65,1]),...trailLines(unstable,[1,.61,.31,1])];
+        geometry.renderCustom({lines,points:[...first.points,...second.points],pointSize:10},basis(.12,.70,25));capture('orbits');
+        $('renderStatus').classList.add('ready');$('renderStatusText').textContent='3 actual simulator renders · '+(state.nasaReady?'NASA 8K skybox':'procedural sky')+' · ready';
+        const lose=renderer.gl.getExtension('WEBGL_lose_context');if(lose)lose.loseContext();$('renderCanvas').remove();
+      }catch(error){console.warn(error);$('renderStatus').classList.add('error');$('renderStatusText').textContent='Concepts shown · WebGL render unavailable';$('imageNote').textContent='Concept artwork shown. Try Chrome with WebGL enabled for actual simulator renders and JPEG downloads.';}
+    }
+    setTimeout(renderImages,100);
+  })();
+  </script>
+</body>
+</html>

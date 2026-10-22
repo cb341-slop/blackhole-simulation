@@ -14,3 +14,9 @@ https://svs.gsfc.nasa.gov/vis/a000000/a003800/a003895/starmap_16k.jpg
 
 The built-in UV-cube and voxel skies are generated locally by this application.
 User-uploaded skyboxes remain in browser memory and are never uploaded by this app.
+
+Social preview image
+
+og-black-hole-schwarzschild-nasa-v1.jpg is rendered by this simulator with
+zero black-hole spin (Schwarzschild, chi = 0) and the NASA 8K Deep Star Maps
+texture credited above, distorted by the simulated gravitational lensing.
