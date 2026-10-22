@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
+import BlackHoleSimulation from "./black-hole-simulation/page";
 
 export default function Home() {
-  notFound();
+  return <BlackHoleSimulation />;
 }

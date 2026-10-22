@@ -4,7 +4,8 @@ import type { ConnectorBinding } from "../lib/connector-contract.mjs";
 
 const worker = {
   fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
-    if (new URL(request.url).pathname === "/") {
+    const url = new URL(request.url);
+    if (url.hostname.toLowerCase() === "artifact.cb341.dev" && url.pathname === "/") {
       return new Response("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>404 — Page not found</title><link rel=\"icon\" href=\"/favicon.svg\"></head><body><h1>404</h1><p>Page not found.</p></body></html>", {
         status: 404,
         headers: { "content-type": "text/html; charset=utf-8" },
