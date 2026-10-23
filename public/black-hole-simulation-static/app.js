@@ -2,12 +2,12 @@ import {Renderer} from './renderer.js?v=6';
 import {GeometryRenderer} from './geometry.js?v=6';
 import {drawDiskUVReference} from './disk-uv.js?v=6';
 import {inspectPixelRay} from './ray-inspector.js?v=12';
-import {surfaceNormalForHit,projectNormal} from './surface-normals.js?v=12';
+import {surfaceNormalForHit,projectNormal,projectLensedNormal,projectSurfacePoint,straightSurfaceOcclusion} from './surface-normals.js?v=20';
 import {curvatureGeometry,tidalGeometry,tidalState} from './physics.js?v=6';
 import {horizonRadius,kerrRadius} from './kerr.js?v=6';
 import {iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy} from './orbits.js?v=6';
 import {drawHorizonUVReference} from './horizon-uv.js?v=6';
-import {selectControlTab} from './control-tabs.js?v=11';
+import {selectControlTab} from './control-tabs.js?v=16';
 
 const $=id=>document.getElementById(id);
 const canvas=$('universe');
@@ -40,11 +40,10 @@ function resetPhysicsCamera(){
 }
 function syncPhysicsUI(){
  const mode=state.physicsView,active=mode!=='none';
- $('physicsView').value=mode;$('orbitViewBtn').setAttribute('aria-pressed',String(mode==='orbit'));$('orbitControls').hidden=mode!=='orbit';$('orbitHUD').hidden=mode!=='orbit';$('viewport').classList.toggle('physics-mode',active);
- $('curvatureViewBtn').setAttribute('aria-pressed',String(mode==='curvature'));$('tidalViewBtn').setAttribute('aria-pressed',String(mode==='tidal'));
+ syncViewMode();$('physicsEmpty').hidden=active;$('orbitControls').hidden=mode!=='orbit';$('orbitHUD').hidden=mode!=='orbit';$('viewport').classList.toggle('physics-mode',active);
  $('physicsHUD').hidden=!active;$('curvatureControls').hidden=mode!=='curvature';$('tidalControls').hidden=mode!=='tidal';
- $('curvatureKey').hidden=mode!=='curvature';$('tidalReadouts').hidden=mode!=='tidal';$('tidalHUDControls').hidden=mode!=='tidal';
- $('orbitBtn').disabled=active;$('flyBtn').disabled=active;
+ $('curvatureKey').hidden=mode!=='curvature';$('tidalReadouts').hidden=mode!=='tidal';
+ $('cameraMode').disabled=active;
  $('distanceLabel').textContent=mode==='curvature'?'VIEW DISTANCE':mode==='tidal'?'CLOUD CENTRE RADIUS':mode==='orbit'?'ORBIT RADIUS':'OBSERVER DISTANCE';
  if(mode==='curvature'){
   $('physicsTitle').textContent='SPATIAL CURVATURE · SCHWARZSCHILD';
@@ -59,8 +58,7 @@ function syncPhysicsUI(){
   $('radialStretch').textContent=`${t.radial.toFixed(2)} ×`;$('transverseStretch').textContent=`${t.transverse.toFixed(2)} ×`;$('tidalRadius').textContent=(t.radius/2).toFixed(2);
   $('physicsNote').textContent=(state.tidalProgress>=1?'Centre stopped at 2.2M, outside the horizon. ':'')+'Enlarged local-frame diagram; particle positions are schematic. Ratios show physical linear tidal strain.';
  }
- $('tidalPlayBtn').textContent=$('tidalHUDPlay').textContent=state.tidalProgress>=1?'↺ Replay fall':state.tidalPlaying&&!state.paused?'Ⅱ Pause fall':'▷ Continue fall';
- $('tidalHUDProgress').value=state.tidalProgress;updateSlider('tidalHUDProgress');
+ $('tidalPlayBtn').textContent=state.tidalProgress>=1?'Replay fall':state.tidalPlaying&&!state.paused?'Pause fall':'Continue fall';
  for(const id of ['curvatureScale','tidalSize','tidalProgress']){$(id).value=state[id];updateSlider(id);$(id+'Val').textContent=id==='tidalProgress'?Math.round(state[id]*100):state[id].toFixed(1);}
  dirty=true;
 }
@@ -79,15 +77,13 @@ function setPhysicsView(mode){
  }
  dirty=true;
 }
-$('physicsView').addEventListener('change',()=>setPhysicsView($('physicsView').value));
-for(const mode of ['curvature','tidal','orbit'])$(mode+'ViewBtn').addEventListener('click',()=>setPhysicsView(state.physicsView===mode?'none':mode));
 for(const id of ['curvatureScale','tidalSize'])$(id).addEventListener('input',()=>{state[id]=+$(id).value;syncPhysicsUI();});
 $('curvatureDensity').addEventListener('change',()=>{state.curvatureDensity=+$('curvatureDensity').value;dirty=true;});
 for(const id of ['curvatureFlat','tidalArrows','tidalGhost'])$(id).addEventListener('change',()=>{state[id]=$(id).checked;syncPhysicsUI();});
-for(const id of ['tidalProgress','tidalHUDProgress'])$(id).addEventListener('input',()=>{state.tidalProgress=+$(id).value;state.tidalPlaying=false;syncPhysicsUI();});
+for(const id of ['tidalProgress'])$(id).addEventListener('input',()=>{state.tidalProgress=+$(id).value;state.tidalPlaying=false;syncPhysicsUI();});
 function replayTides(){state.tidalProgress=0;state.tidalPlaying=true;state.paused=false;syncPause();syncPhysicsUI();}
-for(const id of ['tidalReplayBtn','tidalHUDReplay'])$(id).addEventListener('click',replayTides);
-for(const id of ['tidalPlayBtn','tidalHUDPlay'])$(id).addEventListener('click',()=>{if(state.tidalProgress>=1){replayTides();return;}if(state.paused){state.paused=false;state.tidalPlaying=true;syncPause();}else state.tidalPlaying=!state.tidalPlaying;syncPhysicsUI();});
+for(const id of ['tidalReplayBtn'])$(id).addEventListener('click',replayTides);
+for(const id of ['tidalPlayBtn'])$(id).addEventListener('click',()=>{if(state.tidalProgress>=1){replayTides();return;}if(state.paused){state.paused=false;state.tidalPlaying=true;syncPause();}else state.tidalPlaying=!state.tidalPlaying;syncPhysicsUI();});
 function updateTides(dt){if(state.physicsView!=='tidal'||state.paused||!state.tidalPlaying)return;state.tidalProgress=Math.min(1,state.tidalProgress+dt/16);if(state.tidalProgress>=1)state.tidalPlaying=false;syncPhysicsUI();}
 function resetOrbit(){orbit=createOrbit(state.orbitRadius*2,state.spin,state.orbitDirection,state.orbitMomentum);state.orbitPlaying=true;dirty=true;}
 function syncOrbitUI(){
@@ -97,7 +93,7 @@ function syncOrbitUI(){
  $('orbitClassification').classList.toggle('invalid',!c.valid);
  $('orbitStatus').textContent=c.valid?`${orbit.status==='running'?'Proper time τ = '+orbit.tau.toFixed(1)+' M':orbit.status} · start ${state.orbitRadius.toFixed(2)}rₛ`:c.classification.startsWith('Horizon')?'The selected radius is at or inside the horizon.':`Massive circular orbits require r > ${(c.photon/2).toFixed(3)}rₛ in this direction.`;
  $('orbitCurrentR').textContent=(orbit.y[0]/2).toFixed(3);$('orbitISCO').textContent=(c.isco/2).toFixed(3);$('orbitPhoton').textContent=(c.photon/2).toFixed(3);$('orbitEnergy').textContent=c.valid?orbit.E.toFixed(6):'—';$('orbitL').textContent=c.valid?orbit.L.toFixed(5):'—';$('orbitError').textContent=c.valid?orbit.maxError.toExponential(1):'—';
- $('orbitPlayBtn').disabled=!c.valid;$('orbitPlayBtn').textContent=orbit.status!=='running'?'↺ Replay':state.orbitPlaying&&!state.paused?'Ⅱ Pause orbit':'▷ Continue orbit';
+ $('orbitPlayBtn').disabled=!c.valid;$('orbitPlayBtn').textContent=orbit.status!=='running'?'Replay':state.orbitPlaying&&!state.paused?'Pause orbit':'Continue orbit';
  for(const id of ['orbitKickIn','orbitKickOut'])$(id).disabled=!c.valid||orbit.status!=='running';
  for(const id of ['orbitRadius','orbitMomentum','orbitSpeed']){$(id).value=state[id];updateSlider(id);$(id+'Val').textContent=state[id].toFixed(id==='orbitSpeed'?0:2);}
  $('orbitDirection').value=String(state.orbitDirection);
@@ -127,15 +123,25 @@ function setPathView(enabled){
  if(enabled&&state.physicsView!=='none')setPhysicsView('none');
  if(enabled){state.diagnostic=0;$('diagnosticMode').value='0';state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();}
  state.pathView=enabled;$('normalArrowOverlay').hidden=true;if(enabled){setComparison(false);if(!pathViewInitialized){for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugGrid','grid'],['debugFrustum','frustum']]){debug[key]=true;$(id).checked=true;}pathViewInitialized=true;}}
- $('pathView').checked=enabled;$('pathViewBtn').setAttribute('aria-pressed',String(enabled));$('pathViewBtn').textContent=enabled?'◉ Observer image':'⌁ Light paths';$('debugLegend').hidden=!enabled&&!debug.overlay;$('canvasHint').innerHTML=enabled?'<span>⌁</span> Drag to inspect rays <b>·</b> Scroll to zoom <b>·</b> WASD moves observer':'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move';dirty=true;
+ syncViewMode();$('debugLegend').hidden=!enabled&&!debug.overlay;$('canvasHint').innerHTML=enabled?'<span>⌁</span> Drag to inspect rays <b>·</b> Scroll to zoom <b>·</b> WASD moves observer':'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move';dirty=true;
 }
 function setComparison(enabled){
  if(enabled)selectControlTab('rays');
  if(enabled&&state.physicsView!=='none')setPhysicsView('none');
- if(enabled&&state.pathView)setPathView(false);state.compare=enabled;$('compareView').checked=enabled;$('compareViewBtn').setAttribute('aria-pressed',String(enabled));$('compareViewBtn').textContent=enabled?'◫ Single view':'◫ Compare lensing';$('comparisonLabels').hidden=!enabled;$('viewport').classList.toggle('comparing',enabled);$('lensing').disabled=enabled;dirty=true;
+ if(enabled&&state.pathView)setPathView(false);state.compare=enabled;normalAnchor=null;syncViewMode();$('comparisonLabels').hidden=!enabled;$('viewport').classList.toggle('comparing',enabled);$('lensing').disabled=enabled;dirty=true;
 }
-$('compareViewBtn').addEventListener('click',()=>setComparison(!state.compare));$('compareView').addEventListener('change',()=>setComparison($('compareView').checked));
-$('pathViewBtn').addEventListener('click',()=>setPathView(!state.pathView));$('pathView').addEventListener('change',()=>setPathView($('pathView').checked));
+function syncViewMode(){
+ $('viewMode').value=state.physicsView!=='none'?state.physicsView:state.pathView?'paths':state.compare?'compare':'observer';
+}
+$('viewMode').addEventListener('change',()=>{
+ const mode=$('viewMode').value;
+ if(['curvature','tidal','orbit'].includes(mode))setPhysicsView(mode);
+ else{
+  if(state.physicsView!=='none')setPhysicsView('none');
+  if(mode==='paths')setPathView(true);else{setPathView(false);setComparison(mode==='compare');}
+ }
+ syncViewMode();dirty=true;
+});
 for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugRs','rs'],['debugPhoton','photon'],['debugGrid','grid'],['debugFrustum','frustum'],['debugOverlay','overlay']])$(id).addEventListener('change',()=>{debug[key]=$(id).checked;$('debugLegend').hidden=!state.pathView&&!debug.overlay;dirty=true;});
 $('rayDensity').addEventListener('change',()=>{debug.density=+$('rayDensity').value;dirty=true;});
 const diagnosticDescriptions={1:['RAY INTEGRATION STEPS','0 steps → selected step budget'],2:['CLOSEST APPROACH','12M+ (blue) → 0M (red)'],3:['NET DIRECTION CHANGE','0° (blue) → 180° (red)'],4:['DISK CROSSINGS','None · 1 cyan · 2 amber · 3+ pink'],5:['RAY TERMINATION','Escape teal · horizon black · core purple · cube yellow · budget red']};
@@ -148,27 +154,46 @@ $('rayProbe').addEventListener('change',()=>{state.probe=$('rayProbe').checked;i
 $('closeProbeBtn').addEventListener('click',()=>{state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();});
 function setModel(blackhole){
  if(!blackhole&&state.physicsView!=='none')setPhysicsView('none');
- stopFall(false);state.blackhole=blackhole;$('nakedModelBtn').classList.toggle('active',!blackhole);$('blackholeModelBtn').classList.toggle('active',blackhole);$('nakedModelBtn').setAttribute('aria-pressed',String(!blackhole));$('blackholeModelBtn').setAttribute('aria-pressed',String(blackhole));
+ stopFall(false);state.blackhole=blackhole;$('spacetimeModel').value=blackhole?'blackhole':'naked';
  $('charge').disabled=blackhole;$('charge').closest('.control-section').classList.toggle('blackhole-model',blackhole);$('modelStatus').textContent=blackhole?(state.spin>0?'KERR BLACK HOLE':'SCHWARZSCHILD BLACK HOLE'):'NAKED SINGULARITY';
  $('horizonReadout').innerHTML=blackhole?`${(horizonRadius(state.spin)*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';$('rsHelp').textContent=blackhole?'Event horizon of the Schwarzschild black hole':'Reference only; not a horizon for Q > M';$('diskRadius').min=blackhole?'7':'4';if(blackhole)state.diskRadius=Math.max(7,state.diskRadius);syncParams();
 }
-$('nakedModelBtn').addEventListener('click',()=>setModel(false));$('blackholeModelBtn').addEventListener('click',()=>setModel(true));
+$('spacetimeModel').addEventListener('change',()=>setModel($('spacetimeModel').value==='blackhole'));
 function startFall(){
  if(state.physicsView!=='none')setPhysicsView('none');
- state.spin=0;setModel(true);setPathView(false);resetCamera();view.distance=18*state.mass;view.phi=1.39;view.theta=.1;state.paused=false;state.autoOrbit=false;$('autoOrbit').checked=false;syncPause();fall={elapsed:0,duration:14,start:18*state.mass};$('fallOverlay').hidden=false;$('fallBtn').textContent='↓ Descent in progress…';$('fallBtn').disabled=true;dirty=true;
+ state.spin=0;setModel(true);setPathView(false);resetCamera();view.distance=18*state.mass;view.phi=1.39;view.theta=.1;state.paused=false;state.autoOrbit=false;$('autoOrbit').checked=false;syncPause();fall={elapsed:0,duration:14,start:18*state.mass};$('fallOverlay').hidden=false;$('fallBtn').textContent='Descent in progress…';$('fallBtn').disabled=true;dirty=true;
 }
-function stopFall(reset=true){fall=null;$('fallOverlay').hidden=true;$('horizonFade').style.opacity=0;$('fallBtn').innerHTML='↓ Fall into a black hole <span>PLAY ANIMATION</span>';$('fallBtn').disabled=false;if(reset)resetCamera();dirty=true;}
-function updateFall(dt){if(!fall||state.paused)return;fall.elapsed+=dt;const t=Math.min(fall.elapsed/fall.duration,1),r0=fall.start,end=2.025*state.mass;view.distance=Math.pow(Math.pow(r0,1.5)+(Math.pow(end,1.5)-Math.pow(r0,1.5))*t,2/3);view.theta=.1+t*.08;$('fallProgress').style.width=`${t*100}%`;$('fallStatus').textContent=t<.96?`Approaching the horizon · r / 2M = ${(view.distance/(2*state.mass)).toFixed(2)}`:'Horizon reached · observation ends';$('horizonFade').style.opacity=Math.max(0,(t-.94)/.06);dirty=true;if(t>=1){state.paused=true;syncPause();fall=null;$('fallStatus').textContent='Horizon reached · observation ends';$('fallBtn').innerHTML='↺ Replay the descent';$('fallBtn').disabled=false;}}
+function stopFall(reset=true){fall=null;$('fallOverlay').hidden=true;$('horizonFade').style.opacity=0;$('fallBtn').textContent='Fall into black hole';$('fallBtn').disabled=false;if(reset)resetCamera();dirty=true;}
+function updateFall(dt){if(!fall||state.paused)return;fall.elapsed+=dt;const t=Math.min(fall.elapsed/fall.duration,1),r0=fall.start,end=2.025*state.mass;view.distance=Math.pow(Math.pow(r0,1.5)+(Math.pow(end,1.5)-Math.pow(r0,1.5))*t,2/3);view.theta=.1+t*.08;$('fallProgress').style.width=`${t*100}%`;$('fallStatus').textContent=t<.96?`Approaching the horizon · r / 2M = ${(view.distance/(2*state.mass)).toFixed(2)}`:'Horizon reached · observation ends';$('horizonFade').style.opacity=Math.max(0,(t-.94)/.06);dirty=true;if(t>=1){state.paused=true;syncPause();fall=null;$('fallStatus').textContent='Horizon reached · observation ends';$('fallBtn').innerHTML='Replay the descent';$('fallBtn').disabled=false;}}
 $('fallBtn').addEventListener('click',startFall);$('stopFallBtn').addEventListener('click',()=>stopFall());
 function setMode(mode){
  if(mode===view.mode)return;const b=basis();
  if(mode==='fly'){view.position=[...b.camera];view.yaw=Math.atan2(b.forward[0],-b.forward[2]);view.pitch=Math.asin(b.forward[1]);}
  else{view.distance=Math.max(3,length(b.camera));view.target=[0,0,0];view.theta=Math.atan2(b.camera[0],b.camera[2]);view.phi=Math.acos(Math.max(-.995,Math.min(.995,b.camera[1]/view.distance)));}
- view.mode=mode;$('orbitBtn').classList.toggle('active',mode==='orbit');$('flyBtn').classList.toggle('active',mode==='fly');
+ view.mode=mode;$('cameraMode').value=mode;
  $('canvasHint').innerHTML=mode==='orbit'?'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move':'<span>⌖</span> Drag to look <b>·</b> WASD move <b>·</b> Q / E down / up';dirty=true;
 }
 function resetCamera(){if(state.physicsView!=='none'){resetPhysicsCamera();return;}view.mode='fly';setMode('orbit');Object.assign(view,{theta:.38,phi:1.30,distance:17,target:[0,0,0]});Object.assign(inspection,{theta:.92,phi:1.06,distance:47,target:[0,0,3]});dirty=true;}
-function updateSlider(id){const el=$(id);el.style.setProperty('--fill',`${100*(+el.value-+el.min)/(+el.max-+el.min)}%`);}
+function syncNumericInput(range,force=false){
+ const number=$(range.id+'Number'),scale=+number.dataset.scale||1;
+ number.min=+range.min*scale;number.max=+range.max*scale;number.step=+range.step*scale;number.disabled=range.disabled;
+ if(force||document.activeElement!==number){
+  const digits=Math.max(0,((+range.step*scale).toString().split('.')[1]||'').length);
+  number.value=(+range.value*scale).toFixed(digits);
+ }
+}
+function updateSlider(id){const el=$(id);el.style.setProperty('--fill',`${100*(+el.value-+el.min)/(+el.max-+el.min)}%`);syncNumericInput(el);}
+for(const number of document.querySelectorAll('[data-range]')){
+ const range=$(number.dataset.range);
+ const commit=()=>{
+  if(range.disabled||number.value===''||!Number.isFinite(+number.value))return;
+  const scale=+number.dataset.scale||1;
+  range.value=Math.min(+range.max,Math.max(+range.min,+number.value/scale));
+  range.dispatchEvent(new Event('input',{bubbles:true}));
+ };
+ number.addEventListener('input',commit);number.addEventListener('change',()=>{commit();syncNumericInput(range,true);});
+ number.addEventListener('blur',()=>syncNumericInput(range,true));
+}
 function syncParams(){
  $('bodyEquationsBlackHole').hidden=!state.blackhole;$('bodyEquationsNaked').hidden=state.blackhole;
  $('spin').value=state.spin;$('spin').disabled=!state.blackhole;updateSlider('spin');$('spinVal').textContent=state.spin.toFixed(2);
@@ -179,10 +204,10 @@ function syncParams(){
  if(state.horizonUV&&!horizonKeyReady){drawHorizonUVReference($('horizonUVReference'));horizonKeyReady=true;}
  $('horizonDebugLabel').textContent=state.blackhole&&state.spin>0?'Kerr horizon · r₊':'Schwarzschild radius · 2M';$('rsHelp').textContent=state.blackhole?(state.spin>0?'Oblate coordinate horizon; blue rings mark equatorial photon radii.':'Event horizon of the Schwarzschild black hole'):'Reference only; not a horizon for Q > M';
  for(const id of ['mass','charge','brightness','diskRadius','skyRotation','fov','exposure']){const el=$(id);el.value=state[id];updateSlider(id);const digits={mass:2,charge:3,brightness:1,diskRadius:1,exposure:1};$(id+'Val').textContent=state[id].toFixed(digits[id]??0);}
- for(const id of ['disk','lensing','autoOrbit'])$(id).checked=state[id];$('quality').value=state.quality;$('diskControls').style.opacity=state.disk?'1':'.35';
+ for(const id of ['disk','lensing','autoOrbit'])$(id).checked=state[id];syncGraphicsQuality();$('diskControls').style.opacity=state.disk?'1':'.35';
  $('photonNote').textContent=state.blackhole?(state.spin>0?`Prograde ISCO ${iscoRadius(state.spin).toFixed(2)}M · horizon ${rh.toFixed(2)}M`:'Photon sphere at 3M · event horizon at 2M'):state.charge<=Math.sqrt(9/8)?'Photon sphere present · no event horizon':'No photon sphere · no event horizon';
  $('horizonReadout').innerHTML=state.blackhole?`${(horizonRadius(state.spin)*state.mass).toFixed(2)} <small>GM/c²</small>`:'None <small>Q &gt; M</small>';
- if(state.blackhole)$('chargeVal').textContent='0.000';
+ if(state.blackhole){$('chargeVal').textContent='0.000';$('chargeNumber').value='0.000';}
  $('diskUV').checked=state.diskUV;$('diskUVRotate').checked=state.diskUVRotate;$('diskUVKey').hidden=!state.diskUV;
  $('diskUVBounds').textContent=`V 0 → ${(state.blackhole?iscoRadius(state.spin):2.15).toFixed(2)} M  ·  V 1 → ${state.diskRadius.toFixed(2)} M`;
  dirty=true;
@@ -191,22 +216,34 @@ for(const id of ['mass','charge','brightness','diskRadius','skyRotation','fov','
 for(const id of ['disk','lensing','autoOrbit'])$(id).addEventListener('change',()=>{state[id]=$(id).checked;syncParams();});
 $('diskUV').addEventListener('change',()=>{state.diskUV=$('diskUV').checked;if(state.diskUV){if(state.physicsView!=='none')setPhysicsView('none');state.diagnostic=0;$('diagnosticMode').value='0';updateDiagnosticUI();state.disk=true;setPathView(false);setUVReferenceFace(false);}syncParams();});
 $('diskUVRotate').addEventListener('change',()=>{state.diskUVRotate=$('diskUVRotate').checked;dirty=true;});
-$('uvTopBtn').addEventListener('click',()=>setUVReferenceFace(false));$('uvBottomBtn').addEventListener('click',()=>setUVReferenceFace(true));
-function setUVReferenceFace(bottom){drawDiskUVReference($('diskUVReference'),bottom);$('uvTopBtn').classList.toggle('active',!bottom);$('uvBottomBtn').classList.toggle('active',bottom);$('uvTopBtn').setAttribute('aria-pressed',String(!bottom));$('uvBottomBtn').setAttribute('aria-pressed',String(bottom));}
-$('quality').addEventListener('change',()=>{state.quality=$('quality').value;dirty=true;});
+$('diskReferenceFace').addEventListener('change',()=>setUVReferenceFace($('diskReferenceFace').value==='bottom'));
+function setUVReferenceFace(bottom){drawDiskUVReference($('diskUVReference'),bottom);$('diskReferenceFace').value=bottom?'bottom':'top';}
+function syncGraphicsQuality(){
+ for(const [id,value] of [['graphicsPotato','low'],['graphicsBalanced','medium'],['graphicsPretty','high']])$(id).checked=state.quality===value;
+}
+for(const [id,value] of [['graphicsPotato','low'],['graphicsBalanced','medium'],['graphicsPretty','high']])$(id).addEventListener('change',()=>{
+ if(!$(id).checked)return;
+ state.quality=value;syncGraphicsQuality();dirty=true;
+});
 function preset(name){if(name==='classic'||name==='repulsive')setModel(false);Object.assign(state,{mass:1,charge:1.03,disk:true,brightness:1.5,diskRadius:14,lensing:true});if(name==='repulsive'){state.charge=1.35;}if(name==='clear')state.disk=false;document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active',b.dataset.preset===name));syncParams();}
 document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>preset(b.dataset.preset)));
 $('resetParamsBtn').addEventListener('click',()=>{state.spin=0;resetOrbit();setModel(true);preset('default');});
-$('orbitBtn').addEventListener('click',()=>setMode('orbit'));
-$('flyBtn').addEventListener('click',()=>setMode('fly'));
+$('cameraMode').addEventListener('change',()=>setMode($('cameraMode').value));
 $('resetCameraBtn').addEventListener('click',()=>{stopFall(false);resetCamera();});
-function syncPause(){if(state.physicsView!=='none')syncPhysicsUI();$('diskAnimation').checked=!state.paused;$('pauseIcon').textContent=state.paused?'▷':'Ⅱ';$('pauseText').textContent=state.paused?'Play':'Pause';$('pauseBtn').setAttribute('aria-label',state.paused?'Play animation':'Pause animation');$('pauseBtn').setAttribute('aria-pressed',String(state.paused));}
+function syncPause(){if(state.physicsView!=='none')syncPhysicsUI();$('pauseText').textContent=state.paused?'Play':'Pause';$('pauseBtn').setAttribute('aria-label',state.paused?'Play animation':'Pause animation');$('pauseBtn').setAttribute('aria-pressed',String(state.paused));}
 function togglePause(){state.paused=!state.paused;syncPause();dirty=true;}
 $('pauseBtn').addEventListener('click',togglePause);
-$('diskAnimation').addEventListener('change',()=>{state.paused=!$('diskAnimation').checked;syncPause();dirty=true;});
-$('panelBtn').addEventListener('click',()=>{document.body.classList.toggle('panel-hidden');dirty=true;});
+function setSidebarVisible(visible){
+ $('controls').hidden=!visible;
+ document.body.classList.toggle('panel-hidden',!visible);
+ $('panelBtn').textContent=visible?'Hide sidebar':'Show sidebar';
+ $('panelBtn').setAttribute('aria-expanded',String(visible));
+ probePoint=null;$('normalArrowOverlay').hidden=true;$('probeMarker').hidden=true;
+ dirty=true;
+}
+$('panelBtn').addEventListener('click',()=>setSidebarVisible($('controls').hidden));
 $('mapToggle').addEventListener('click',()=>{const collapsed=$('observerMap').classList.toggle('collapsed');$('mapToggle').textContent=collapsed?'+':'−';$('mapToggle').setAttribute('aria-expanded',String(!collapsed));$('mapToggle').setAttribute('aria-label',`${collapsed?'Expand':'Collapse'} camera overview`);dirty=true;});
-$('fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if($('viewport').requestFullscreen)await $('viewport').requestFullscreen();else{document.body.classList.toggle('panel-hidden');toast('Expanded view');}dirty=true;}catch{toast('Fullscreen is unavailable in this browser.');}});
+$('fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if($('viewport').requestFullscreen)await $('viewport').requestFullscreen();else{setSidebarVisible($('controls').hidden);}dirty=true;}catch{toast('Fullscreen is unavailable in this browser.');}});
 $('screenshotBtn').addEventListener('click',()=>{if(!renderer)return;renderScene();canvas.toBlob(blob=>{if(!blob){toast('Could not capture this frame.');return;}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`singularity-${Date.now()}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Screenshot saved as PNG');});});
 $('aboutBtn').addEventListener('click',()=>$('aboutDialog').showModal());$('closeAboutBtn').addEventListener('click',()=>$('aboutDialog').close());$('aboutDialog').addEventListener('click',e=>{if(e.target===$('aboutDialog')){const r=$('aboutDialog').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('aboutDialog').close();}});
 
@@ -223,7 +260,7 @@ for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addE
 function zoom(delta){if(state.pathView||state.physicsView!=='none')inspection.distance=Math.max(3*state.mass,Math.min(160*state.mass,inspection.distance*Math.exp(delta*.001)));else if(view.mode==='orbit')view.distance=Math.max(state.blackhole?2.025*state.mass:2.8,Math.min(65,view.distance*Math.exp(delta*.001)));else{const b=basis();view.position=add(view.position,mul(b.forward,-delta*.012));}dirty=true;}
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY);},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-let lastProbe=0,probePoint=null;
+let lastProbe=0,probePoint=null,normalAnchor=null;
 function updateProbe(point,referenceRay=null){
  if(!state.probe||state.pathView||!point)return;
  const rect=canvas.getBoundingClientRect(),x=point.x,y=point.y;if(x<0||y<0||x>rect.width||y>rect.height)return;
@@ -237,34 +274,68 @@ function updateProbe(point,referenceRay=null){
  $('probeErrorLabel').textContent=state.blackhole&&state.spin>0?'Null constraint |2ℋ|':'Max energy drift';$('probeEnergy').textContent=ray.lensing?(state.blackhole&&state.spin>0?ray.maxError.toExponential(2):`${(ray.maxError*100).toFixed(4)} %`):'N/A · straight rays';
  $('probeMarker').hidden=false;$('probeMarker').style.left=`${x}px`;$('probeMarker').style.top=`${y}px`;
 }
+function drawNormalSample(ray,point,b,rect,suffix,left,width){
+ const element=id=>$(id+suffix),{x,y}=point;
+ const n=surfaceNormalForHit(ray.firstHit,state.mass,state.blackhole?state.spin:0);
+ const viewLabel=ray.matched?'straight · same point'+(ray.occlusion?' · hidden':''):ray.lensing?'lensed':'straight';
+ const label=n?(ray.firstHit.kind==='disk'?`Disk ${ray.firstHit.face}`:'Horizon capture surface'):ray.firstHit?.kind==='cube'?'Cube occlusion':ray.status==='budget'?'Ray budget exhausted':'No disk or horizon';
+ const projection=n?(ray.lensing?projectLensedNormal(n,ray,state,b,{...point,width:rect.width,height:rect.height}):projectNormal(n,b,52,ray.firstHit.position)):null;
+ let path='',glyph=n&&!projection?'?':'';
+ if(projection){
+  const {dx,dy,towardCamera}=projection,end=[x+dx,y+dy],plane=Math.hypot(dx,dy),ux=plane?dx/plane:0,uy=plane?dy/plane:0;
+  path=plane<7?'':`M ${x} ${y} L ${end[0]} ${end[1]} M ${end[0]-ux*9-uy*5} ${end[1]-uy*9+ux*5} L ${end[0]} ${end[1]} L ${end[0]-ux*9+uy*5} ${end[1]-uy*9-ux*5}`;
+  glyph=Math.abs(towardCamera)>.12||plane<7?(towardCamera>=0?'⊙':'⊗'):'';
+ }
+ for(const [key,value] of Object.entries({x:left,y:0,width,height:rect.height}))element('normalClipRect').setAttribute(key,value);
+ element('normalArrowPath').setAttribute('d',path);element('normalArrowOutline').setAttribute('d',path);
+ for(const id of ['normalArrowPath','normalArrowOutline'])element(id).setAttribute('stroke-dasharray',ray.occlusion?'4 3':'');
+ $(suffix?'normalArrowRight':'normalArrowLeft').setAttribute('data-occluded',ray.occlusion?'true':'false');
+ $(suffix?'normalArrowRight':'normalArrowLeft').setAttribute('data-projection',!projection?'unavailable':ray.lensing?'lensed':'perspective');
+ element('normalOrigin').setAttribute('cx',x);element('normalOrigin').setAttribute('cy',y);
+ const depth=element('normalDepthGlyph');depth.textContent=glyph;depth.setAttribute('x',x-16);depth.setAttribute('y',y-8);
+ const labelX=Math.max(left+7,Math.min(left+width-235,x+14)),labelY=Math.max(24,Math.min(rect.height-22,y+24));
+ const markerView=ray.matched?'straight'+(ray.occlusion?' · hidden':''):viewLabel;
+ element('normalLabel').textContent=`${n?'N · ':''}${label} · ${markerView}`;
+ element('normalVector').textContent=n?`XYZ (${n.map(v=>Math.abs(v)<.005?'0.00':v.toFixed(2)).join(', ')})`:'';
+ for(const [id,offset] of [['normalLabel',0],['normalVector',15]]){element(id).setAttribute('x',labelX);element(id).setAttribute('y',labelY+offset);}
+ return {normal:n,description:`${viewLabel}: ${label}${n?' · N ('+n.map(v=>v.toFixed(2)).join(', ')+')':''}${ray.occlusion?' · '+ray.occlusion:''}${n&&!projection?' · direction unavailable near a caustic or trace boundary':''}`};
+}
 function updateCursorInspection(point){
  const overlay=$('normalArrowOverlay');
  if((!state.probe&&!state.surfaceNormal)||state.pathView||state.physicsView!=='none'||!point){overlay.hidden=true;$('probeMarker').hidden=true;return;}
  const rect=canvas.getBoundingClientRect(),{x,y}=point;
  if(x<0||y<0||x>=rect.width||y>=rect.height){overlay.hidden=true;return;}
- const b=basis(),ray=inspectPixelRay(state,b,{x,y,width:rect.width,height:rect.height,includeHorizon:state.surfaceNormal});
- if(state.probe)updateProbe(point,ray);
- const n=state.surfaceNormal?surfaceNormalForHit(ray.firstHit,state.mass,state.blackhole?state.spin:0):null;
- if(!n){overlay.hidden=true;if(state.surfaceNormal)$('normalReadout').textContent=ray.firstHit?.kind==='cube'?'Cube occludes the surface.':'No disk or horizon at this pixel.';return;}
- const {dx,dy,towardCamera}=projectNormal(n,b),end=[x+dx,y+dy],plane=Math.hypot(dx,dy),ux=plane?dx/plane:0,uy=plane?dy/plane:0;
- const path=plane<7?'':`M ${x} ${y} L ${end[0]} ${end[1]} M ${end[0]-ux*9-uy*5} ${end[1]-uy*9+ux*5} L ${end[0]} ${end[1]} L ${end[0]-ux*9+uy*5} ${end[1]-uy*9-ux*5}`;
- const half=state.compare?rect.width/2:rect.width,left=state.compare&&x>=half?half:0;
+ const b=basis(),trace=p=>inspectPixelRay(state,b,{...p,width:rect.width,height:rect.height,includeHorizon:state.surfaceNormal});
+ const half=rect.width/2,hoveringLensed=!state.compare||x<half;
+ const cursorRay=state.probe||!state.compare||hoveringLensed?trace(point):null;
+ if(state.probe)updateProbe(point,cursorRay);
+ if(!state.surfaceNormal){overlay.hidden=true;return;}
  $('normalArrowSVG').setAttribute('viewBox',`0 0 ${rect.width} ${rect.height}`);
- for(const [key,value] of Object.entries({x:left,y:0,width:half,height:rect.height}))$('normalClipRect').setAttribute(key,value);
- $('normalArrowPath').setAttribute('d',path);$('normalArrowOutline').setAttribute('d',path);
- $('normalOrigin').setAttribute('cx',x);$('normalOrigin').setAttribute('cy',y);
- const glyph=$('normalDepthGlyph');glyph.textContent=Math.abs(towardCamera)>.12||plane<7?(towardCamera>=0?'⊙':'⊗'):'';glyph.setAttribute('x',x-16);glyph.setAttribute('y',y-8);
- const labelX=Math.max(left+7,Math.min(left+half-235,x+14)),labelY=Math.max(24,Math.min(rect.height-22,y+24));
- const label=ray.firstHit.kind==='disk'?`Disk ${ray.firstHit.face}`:'Horizon capture surface';
- $('normalLabel').textContent=`N · ${label} · ${ray.lensing?'lensed':'straight'}`;
- $('normalVector').textContent=`XYZ (${n.map(v=>Math.abs(v)<.005?'0.00':v.toFixed(2)).join(', ')})`;
- $('normalReadout').textContent=`${label} · ${ray.lensing?'lensed':'straight'} · N (${n.map(v=>v.toFixed(2)).join(', ')})`;
- for(const [id,offset] of [['normalLabel',0],['normalVector',15]]){$(id).setAttribute('x',labelX);$(id).setAttribute('y',labelY+offset);}
- overlay.setAttribute('aria-label',`${label}; ${ray.lensing?'lensed':'straight'} ray; coordinate unit normal ${n.map(v=>v.toFixed(2)).join(', ')}; ${towardCamera>=0?'toward':'away from'} camera.`);
- overlay.hidden=false;
+ $('normalArrowRight').style.display='none';
+ let samples;
+ if(state.compare){
+  if(hoveringLensed)normalAnchor={u:x/half,v:y/rect.height};
+  if(!normalAnchor){overlay.hidden=true;$('normalReadout').textContent='Hover the lensed (left) image to select a surface point.';return;}
+  const leftPoint={x:normalAnchor.u*half,y:normalAnchor.v*rect.height};
+  const selectedRay=hoveringLensed?cursorRay:trace(leftPoint),hit=selectedRay.firstHit;
+  const first=drawNormalSample(selectedRay,leftPoint,b,rect,'',0,half);
+  if(!first.normal){overlay.hidden=true;$('normalReadout').textContent=first.description+'\nstraight: no source surface selected.';return;}
+  const source=projectSurfacePoint(hit.position,b,{width:half,height:rect.height,fov:state.fov,offsetX:half});
+  samples=[first];
+  if(source?.onScreen){
+   $('normalArrowRight').style.display='';
+   const mappedRay={firstHit:hit,lensing:false,matched:true,occlusion:straightSurfaceOcclusion(hit,state,b)};
+   samples.push(drawNormalSample(mappedRay,source,b,rect,'Right',half,half));
+  }else samples.push({description:source?'straight: same surface point is outside the image.':'straight: same surface point is behind the camera.'});
+  samples.push({description:'Source P ('+hit.position.map(v=>v.toFixed(3)).join(', ')+') · same point and face in both views.'});
+ }else samples=[drawNormalSample(cursorRay,point,b,rect,'',0,rect.width)];
+ const description=samples.map(sample=>sample.description).join('\n');
+ $('normalReadout').textContent=description;overlay.setAttribute('aria-label',description);
+ overlay.hidden=!state.compare&&!samples[0].normal;
 }
 $('surfaceNormal').addEventListener('change',()=>{
- state.surfaceNormal=$('surfaceNormal').checked;$('normalReadout').hidden=!state.surfaceNormal;
+ state.surfaceNormal=$('surfaceNormal').checked;normalAnchor=null;$('normalReadout').hidden=!state.surfaceNormal;
+ $('normalReadout').textContent=state.compare?'Hover the lensed (left) image to select a surface point.':'Move or tap on the image.';
  if(state.surfaceNormal){if(state.physicsView!=='none')setPhysicsView('none');setPathView(false);}
  updateCursorInspection(probePoint);dirty=true;
 });
@@ -276,7 +347,7 @@ canvas.addEventListener('pointermove',recordCursor);
 canvas.addEventListener('pointerup',recordCursor);
 canvas.addEventListener('pointerleave',e=>{if(e.pointerType==='touch')return;$('probeMarker').hidden=true;$('normalArrowOverlay').hidden=true;probePoint=null;});
 canvas.addEventListener('pointercancel',()=>{$('probeMarker').hidden=true;$('normalArrowOverlay').hidden=true;probePoint=null;});
-function isEditing(e){return /INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY|^A$/.test(e.target.tagName)||$('aboutDialog').open;}
+function isEditing(e){return e.target.closest?.('#controls')||e.target.closest?.('.app-tools')||/INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY|^A$/.test(e.target.tagName)||$('aboutDialog').open;}
 window.addEventListener('keydown',e=>{if(isEditing(e))return;const key=e.key.toLowerCase();if(['w','a','s','d','q','e','shift','arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)){e.preventDefault();keys.add(key);}if(e.repeat)return;if(key===' ')togglePause();if(key==='f')resetCamera();if(key==='c')addCube();});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();pointers.clear();});
 function moveCamera(dt){
@@ -322,12 +393,12 @@ function createUVAtlas(){
  }return c;
 }
 function selectSky(mode){
- state.skyMode=mode;document.querySelectorAll('.sky-card').forEach(b=>b.classList.toggle('active',+b.dataset.sky===mode));
+ state.skyMode=mode;$('skyMode').value=String(mode);$('uploadedPanoramaOption').disabled=!uploadSource||uploadMode!==3;$('uploadedCubeOption').disabled=!uploadSource||uploadMode!==4;
  if(mode===0&&nasaImage)renderer.upload(nasaImage);else if(mode===1)renderer.upload(uvAtlas);else if(mode===3||mode===4){if(uploadSource)renderer.upload(uploadSource);else return;}
  $('skyCredit').hidden=mode!==0;
  dirty=true;
 }
-document.querySelectorAll('.sky-card').forEach(b=>b.addEventListener('click',()=>{if(renderer)selectSky(+b.dataset.sky);}));
+$('skyMode').addEventListener('change',()=>{if(renderer)selectSky(+$('skyMode').value);});
 async function loadNASA(){
  const id=++nasaLoadId,requested=$('nasaQuality').value,max=renderer.gl.getParameter(renderer.gl.MAX_TEXTURE_SIZE);let resolution=requested==='16k'?16384:8192;
  if(max<resolution){resolution=max>=8192?8192:4096;toast(`This GPU supports a ${resolution}px sky texture; using its maximum.`);}

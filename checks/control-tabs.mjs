@@ -23,5 +23,5 @@ function key(tabName,key,expected){
  tab.events.keydown({key,preventDefault:()=>prevented=true,stopPropagation:()=>stopped=true});
  selected(expected);assert.ok(prevented&&stopped);assert.equal(focused.dataset.controlTab,expected);checks+=2;
 }
-key('physics','ArrowRight','body');key('body','ArrowLeft','physics');key('physics','Home','body');key('body','End','physics');key('disk','ArrowRight','rays');
+key('physics','ArrowRight','body');key('body','ArrowLeft','physics');key('physics','Home','body');key('body','End','physics');key('disk','ArrowRight','rays');key('body','ArrowUp','physics');key('physics','ArrowDown','body');
 console.log(`${checks} tab checks passed: category visibility, one keyboard stop, wraparound, Home/End, and focus.`);
