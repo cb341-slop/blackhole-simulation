@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {embeddingHeight,tidalState,curvatureGeometry,tidalGeometry} from '../dist/physics.js';
+import {embeddingHeight,tidalState,curvatureGeometry,tidalGeometry} from '../public/black-hole-simulation-static/physics.js';
 
 let checks=0;
 const check=(condition,message)=>{assert.ok(condition,message);checks++;};

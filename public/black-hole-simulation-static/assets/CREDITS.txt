@@ -20,3 +20,10 @@ Social preview image
 og-black-hole-schwarzschild-nasa-v1.jpg is rendered by this simulator with
 zero black-hole spin (Schwarzschild, chi = 0) and the NASA 8K Deep Star Maps
 texture credited above, distorted by the simulated gravitational lensing.
+
+Equation rendering
+
+KaTeX 0.19.0, locally hosted under vendor/katex-0.19.0/.
+Copyright (c) 2013-2020 Khan Academy and other contributors.
+MIT license; see vendor/katex-0.19.0/LICENSE.
+https://katex.org/

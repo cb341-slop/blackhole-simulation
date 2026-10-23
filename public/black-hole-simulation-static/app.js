@@ -1,15 +1,17 @@
 import {Renderer} from './renderer.js?v=6';
 import {GeometryRenderer} from './geometry.js?v=6';
 import {drawDiskUVReference} from './disk-uv.js?v=6';
-import {inspectPixelRay} from './ray-inspector.js?v=6';
+import {inspectPixelRay} from './ray-inspector.js?v=12';
+import {surfaceNormalForHit,projectNormal} from './surface-normals.js?v=12';
 import {curvatureGeometry,tidalGeometry,tidalState} from './physics.js?v=6';
 import {horizonRadius,kerrRadius} from './kerr.js?v=6';
 import {iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy} from './orbits.js?v=6';
 import {drawHorizonUVReference} from './horizon-uv.js?v=6';
+import {selectControlTab} from './control-tabs.js?v=11';
 
 const $=id=>document.getElementById(id);
 const canvas=$('universe');
-const state={mass:1,charge:1.03,blackhole:true,spin:0,horizonUV:false,horizonUVRotate:false,orbitRadius:4,orbitMomentum:1,orbitSpeed:12,orbitPlaying:true,orbitDirection:1,orbitTrail:true,orbitReference:true,physicsView:'none',curvatureScale:1,curvatureDensity:28,curvatureFlat:false,tidalProgress:0,tidalPlaying:true,tidalSize:1,tidalArrows:true,tidalGhost:true,pathView:false,compare:false,diagnostic:0,probe:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.5,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
+const state={mass:1,charge:1.03,blackhole:true,spin:0,horizonUV:false,horizonUVRotate:false,orbitRadius:4,orbitMomentum:1,orbitSpeed:12,orbitPlaying:true,orbitDirection:1,orbitTrail:true,orbitReference:true,physicsView:'none',curvatureScale:1,curvatureDensity:28,curvatureFlat:false,tidalProgress:0,tidalPlaying:true,tidalSize:1,tidalArrows:true,tidalGhost:true,pathView:false,compare:false,diagnostic:0,probe:false,surfaceNormal:false,nasaReady:false,disk:true,diskUV:false,diskUVRotate:false,brightness:1.5,diskRadius:14,skyMode:0,skyRotation:0,fov:55,exposure:1,quality:'medium',lensing:true,autoOrbit:false,time:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,cubes:[]};
 const debug={rays:false,center:false,rs:false,photon:false,grid:false,frustum:false,overlay:false,density:5};
 const inspection={theta:.92,phi:1.06,distance:47,target:[0,0,3]};
 const view={mode:'orbit',theta:.38,phi:1.30,distance:17,target:[0,0,0],position:[0,0,17],yaw:0,pitch:0};
@@ -63,11 +65,12 @@ function syncPhysicsUI(){
  dirty=true;
 }
 function setPhysicsView(mode){
+ if(mode!=='none')selectControlTab('physics');
  if(mode!=='none'){
   stopFall(false);if(mode==='curvature'||mode==='tidal'){state.spin=0;syncParams();}if(!state.blackhole)setModel(true);setPathView(false);setComparison(false);
   state.diagnostic=0;$('diagnosticMode').value='0';state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();
  }
- state.physicsView=mode;syncPhysicsUI();
+ state.physicsView=mode;$('normalArrowOverlay').hidden=true;syncPhysicsUI();
  if(mode!=='none'){
   resetPhysicsCamera();$('debugLegend').hidden=true;
   $('canvasHint').innerHTML='<span>↔</span> Drag to inspect <b>·</b> Scroll to zoom <b>·</b> WASD / Q E to pan';
@@ -120,12 +123,14 @@ $('spin').addEventListener('input',()=>applySpin(+$('spin').value));
 $('horizonUV').addEventListener('change',()=>{state.horizonUV=$('horizonUV').checked;if(state.horizonUV){if(!state.blackhole)setModel(true);if(state.physicsView!=='none')setPhysicsView('none');setPathView(false);state.diagnostic=0;$('diagnosticMode').value='0';updateDiagnosticUI();}syncParams();});
 $('horizonUVRotate').addEventListener('change',()=>{state.horizonUVRotate=$('horizonUVRotate').checked;dirty=true;});
 function setPathView(enabled){
+ if(enabled)selectControlTab('rays');
  if(enabled&&state.physicsView!=='none')setPhysicsView('none');
  if(enabled){state.diagnostic=0;$('diagnosticMode').value='0';state.probe=false;$('rayProbe').checked=false;updateDiagnosticUI();}
- state.pathView=enabled;if(enabled){setComparison(false);if(!pathViewInitialized){for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugGrid','grid'],['debugFrustum','frustum']]){debug[key]=true;$(id).checked=true;}pathViewInitialized=true;}}
+ state.pathView=enabled;$('normalArrowOverlay').hidden=true;if(enabled){setComparison(false);if(!pathViewInitialized){for(const [id,key] of [['debugRays','rays'],['debugCenter','center'],['debugGrid','grid'],['debugFrustum','frustum']]){debug[key]=true;$(id).checked=true;}pathViewInitialized=true;}}
  $('pathView').checked=enabled;$('pathViewBtn').setAttribute('aria-pressed',String(enabled));$('pathViewBtn').textContent=enabled?'◉ Observer image':'⌁ Light paths';$('debugLegend').hidden=!enabled&&!debug.overlay;$('canvasHint').innerHTML=enabled?'<span>⌁</span> Drag to inspect rays <b>·</b> Scroll to zoom <b>·</b> WASD moves observer':'<span>↔</span> Drag to orbit <b>·</b> Scroll to zoom <b>·</b> WASD to move';dirty=true;
 }
 function setComparison(enabled){
+ if(enabled)selectControlTab('rays');
  if(enabled&&state.physicsView!=='none')setPhysicsView('none');
  if(enabled&&state.pathView)setPathView(false);state.compare=enabled;$('compareView').checked=enabled;$('compareViewBtn').setAttribute('aria-pressed',String(enabled));$('compareViewBtn').textContent=enabled?'◫ Single view':'◫ Compare lensing';$('comparisonLabels').hidden=!enabled;$('viewport').classList.toggle('comparing',enabled);$('lensing').disabled=enabled;dirty=true;
 }
@@ -165,6 +170,7 @@ function setMode(mode){
 function resetCamera(){if(state.physicsView!=='none'){resetPhysicsCamera();return;}view.mode='fly';setMode('orbit');Object.assign(view,{theta:.38,phi:1.30,distance:17,target:[0,0,0]});Object.assign(inspection,{theta:.92,phi:1.06,distance:47,target:[0,0,3]});dirty=true;}
 function updateSlider(id){const el=$(id);el.style.setProperty('--fill',`${100*(+el.value-+el.min)/(+el.max-+el.min)}%`);}
 function syncParams(){
+ $('bodyEquationsBlackHole').hidden=!state.blackhole;$('bodyEquationsNaked').hidden=state.blackhole;
  $('spin').value=state.spin;$('spin').disabled=!state.blackhole;updateSlider('spin');$('spinVal').textContent=state.spin.toFixed(2);
  const rh=horizonRadius(state.spin),rho=Math.sqrt(rh*rh+state.spin*state.spin);
  $('spinNote').textContent=state.blackhole?`χ = Jc / GM² · spin axis +Y · r₊ = ${rh.toFixed(3)}M · polar/equatorial coordinate ratio ${(rh/rho).toFixed(3)}`:'Spin is available in black-hole mode.';
@@ -194,9 +200,10 @@ $('resetParamsBtn').addEventListener('click',()=>{state.spin=0;resetOrbit();setM
 $('orbitBtn').addEventListener('click',()=>setMode('orbit'));
 $('flyBtn').addEventListener('click',()=>setMode('fly'));
 $('resetCameraBtn').addEventListener('click',()=>{stopFall(false);resetCamera();});
-function syncPause(){if(state.physicsView!=='none')syncPhysicsUI();$('pauseIcon').textContent=state.paused?'▷':'Ⅱ';$('pauseText').textContent=state.paused?'Play':'Pause';$('pauseBtn').setAttribute('aria-label',state.paused?'Play animation':'Pause animation');$('pauseBtn').setAttribute('aria-pressed',String(state.paused));}
+function syncPause(){if(state.physicsView!=='none')syncPhysicsUI();$('diskAnimation').checked=!state.paused;$('pauseIcon').textContent=state.paused?'▷':'Ⅱ';$('pauseText').textContent=state.paused?'Play':'Pause';$('pauseBtn').setAttribute('aria-label',state.paused?'Play animation':'Pause animation');$('pauseBtn').setAttribute('aria-pressed',String(state.paused));}
 function togglePause(){state.paused=!state.paused;syncPause();dirty=true;}
 $('pauseBtn').addEventListener('click',togglePause);
+$('diskAnimation').addEventListener('change',()=>{state.paused=!$('diskAnimation').checked;syncPause();dirty=true;});
 $('panelBtn').addEventListener('click',()=>{document.body.classList.toggle('panel-hidden');dirty=true;});
 $('mapToggle').addEventListener('click',()=>{const collapsed=$('observerMap').classList.toggle('collapsed');$('mapToggle').textContent=collapsed?'+':'−';$('mapToggle').setAttribute('aria-expanded',String(!collapsed));$('mapToggle').setAttribute('aria-label',`${collapsed?'Expand':'Collapse'} camera overview`);dirty=true;});
 $('fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if($('viewport').requestFullscreen)await $('viewport').requestFullscreen();else{document.body.classList.toggle('panel-hidden');toast('Expanded view');}dirty=true;}catch{toast('Fullscreen is unavailable in this browser.');}});
@@ -217,10 +224,10 @@ function zoom(delta){if(state.pathView||state.physicsView!=='none')inspection.di
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY);},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 let lastProbe=0,probePoint=null;
-function updateProbe(point){
+function updateProbe(point,referenceRay=null){
  if(!state.probe||state.pathView||!point)return;
  const rect=canvas.getBoundingClientRect(),x=point.x,y=point.y;if(x<0||y<0||x>rect.width||y>rect.height)return;
- const ray=inspectPixelRay(state,basis(),{x,y,width:rect.width,height:rect.height}),hit=ray.firstHit;
+ const ray=referenceRay||inspectPixelRay(state,basis(),{x,y,width:rect.width,height:rect.height}),hit=ray.firstHit;
  $('probeView').textContent=`${ray.lensing?'LENSING ON':'LENSING OFF'} · CPU REFERENCE`;
  $('probeHit').textContent=hit?.kind==='disk'?`${hit.face} ${hit.label}`:hit?.kind==='cube'?`Cube ${String(hit.id).padStart(2,'0')}`:hit?.kind==='horizon'?`HORIZON ${hit.label}`:'No disk / cube hit';
  $('probeUV').textContent=(hit?.kind==='disk'||hit?.kind==='horizon')?`${hit.u.toFixed(3)} / ${hit.v.toFixed(3)}`:'—';
@@ -230,9 +237,46 @@ function updateProbe(point){
  $('probeErrorLabel').textContent=state.blackhole&&state.spin>0?'Null constraint |2ℋ|':'Max energy drift';$('probeEnergy').textContent=ray.lensing?(state.blackhole&&state.spin>0?ray.maxError.toExponential(2):`${(ray.maxError*100).toFixed(4)} %`):'N/A · straight rays';
  $('probeMarker').hidden=false;$('probeMarker').style.left=`${x}px`;$('probeMarker').style.top=`${y}px`;
 }
-canvas.addEventListener('pointermove',e=>{probePoint={x:e.clientX-canvas.getBoundingClientRect().left,y:e.clientY-canvas.getBoundingClientRect().top};const now=performance.now();if(state.probe&&now-lastProbe>90){lastProbe=now;updateProbe(probePoint);}});
-canvas.addEventListener('pointerleave',()=>{$('probeMarker').hidden=true;probePoint=null;});
-function isEditing(e){return /INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName)||$('aboutDialog').open;}
+function updateCursorInspection(point){
+ const overlay=$('normalArrowOverlay');
+ if((!state.probe&&!state.surfaceNormal)||state.pathView||state.physicsView!=='none'||!point){overlay.hidden=true;$('probeMarker').hidden=true;return;}
+ const rect=canvas.getBoundingClientRect(),{x,y}=point;
+ if(x<0||y<0||x>=rect.width||y>=rect.height){overlay.hidden=true;return;}
+ const b=basis(),ray=inspectPixelRay(state,b,{x,y,width:rect.width,height:rect.height,includeHorizon:state.surfaceNormal});
+ if(state.probe)updateProbe(point,ray);
+ const n=state.surfaceNormal?surfaceNormalForHit(ray.firstHit,state.mass,state.blackhole?state.spin:0):null;
+ if(!n){overlay.hidden=true;if(state.surfaceNormal)$('normalReadout').textContent=ray.firstHit?.kind==='cube'?'Cube occludes the surface.':'No disk or horizon at this pixel.';return;}
+ const {dx,dy,towardCamera}=projectNormal(n,b),end=[x+dx,y+dy],plane=Math.hypot(dx,dy),ux=plane?dx/plane:0,uy=plane?dy/plane:0;
+ const path=plane<7?'':`M ${x} ${y} L ${end[0]} ${end[1]} M ${end[0]-ux*9-uy*5} ${end[1]-uy*9+ux*5} L ${end[0]} ${end[1]} L ${end[0]-ux*9+uy*5} ${end[1]-uy*9-ux*5}`;
+ const half=state.compare?rect.width/2:rect.width,left=state.compare&&x>=half?half:0;
+ $('normalArrowSVG').setAttribute('viewBox',`0 0 ${rect.width} ${rect.height}`);
+ for(const [key,value] of Object.entries({x:left,y:0,width:half,height:rect.height}))$('normalClipRect').setAttribute(key,value);
+ $('normalArrowPath').setAttribute('d',path);$('normalArrowOutline').setAttribute('d',path);
+ $('normalOrigin').setAttribute('cx',x);$('normalOrigin').setAttribute('cy',y);
+ const glyph=$('normalDepthGlyph');glyph.textContent=Math.abs(towardCamera)>.12||plane<7?(towardCamera>=0?'⊙':'⊗'):'';glyph.setAttribute('x',x-16);glyph.setAttribute('y',y-8);
+ const labelX=Math.max(left+7,Math.min(left+half-235,x+14)),labelY=Math.max(24,Math.min(rect.height-22,y+24));
+ const label=ray.firstHit.kind==='disk'?`Disk ${ray.firstHit.face}`:'Horizon capture surface';
+ $('normalLabel').textContent=`N · ${label} · ${ray.lensing?'lensed':'straight'}`;
+ $('normalVector').textContent=`XYZ (${n.map(v=>Math.abs(v)<.005?'0.00':v.toFixed(2)).join(', ')})`;
+ $('normalReadout').textContent=`${label} · ${ray.lensing?'lensed':'straight'} · N (${n.map(v=>v.toFixed(2)).join(', ')})`;
+ for(const [id,offset] of [['normalLabel',0],['normalVector',15]]){$(id).setAttribute('x',labelX);$(id).setAttribute('y',labelY+offset);}
+ overlay.setAttribute('aria-label',`${label}; ${ray.lensing?'lensed':'straight'} ray; coordinate unit normal ${n.map(v=>v.toFixed(2)).join(', ')}; ${towardCamera>=0?'toward':'away from'} camera.`);
+ overlay.hidden=false;
+}
+$('surfaceNormal').addEventListener('change',()=>{
+ state.surfaceNormal=$('surfaceNormal').checked;$('normalReadout').hidden=!state.surfaceNormal;
+ if(state.surfaceNormal){if(state.physicsView!=='none')setPhysicsView('none');setPathView(false);}
+ updateCursorInspection(probePoint);dirty=true;
+});
+function recordCursor(e){
+ const rect=canvas.getBoundingClientRect();probePoint={x:e.clientX-rect.left,y:e.clientY-rect.top};
+ const now=performance.now();if((state.probe||state.surfaceNormal)&&(e.type==='pointerup'||now-lastProbe>90)){lastProbe=now;updateCursorInspection(probePoint);}
+}
+canvas.addEventListener('pointermove',recordCursor);
+canvas.addEventListener('pointerup',recordCursor);
+canvas.addEventListener('pointerleave',e=>{if(e.pointerType==='touch')return;$('probeMarker').hidden=true;$('normalArrowOverlay').hidden=true;probePoint=null;});
+canvas.addEventListener('pointercancel',()=>{$('probeMarker').hidden=true;$('normalArrowOverlay').hidden=true;probePoint=null;});
+function isEditing(e){return /INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY|^A$/.test(e.target.tagName)||$('aboutDialog').open;}
 window.addEventListener('keydown',e=>{if(isEditing(e))return;const key=e.key.toLowerCase();if(['w','a','s','d','q','e','shift','arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)){e.preventDefault();keys.add(key);}if(e.repeat)return;if(key===' ')togglePause();if(key==='f')resetCamera();if(key==='c')addCube();});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();pointers.clear();});
 function moveCamera(dt){
@@ -246,6 +290,7 @@ function moveCamera(dt){
 }
 
 function addCube(){
+ selectControlTab('environment');
  if(state.physicsView!=='none')setPhysicsView('none');
  if(state.cubes.length>=8){toast('Eight cubes is the limit for this experiment.');return;}
  const b=basis(),p=add(b.camera,mul(b.forward,7));const palette=['#c2e5e4','#e8b17b','#b4c896','#c5a6d9','#e39b91','#98b6df','#e0cf80','#b8b8ad'];
@@ -411,7 +456,7 @@ function renderScene(){
   if(state.compare){const [w,h]=size,left=Math.floor(w/2),aspect=canvas.clientWidth/canvas.clientHeight/2;renderer.gl.viewport(0,0,left,h);geometry.render({...state,lensing:true},b,debug,b,{aspect});renderer.gl.viewport(left,0,w-left,h);geometry.render({...state,lensing:false},b,debug,b,{aspect});renderer.gl.viewport(0,0,w,h);}
   else geometry.render(state,b,debug,b);
  }}
- if(state.physicsView==='none')drawOverview(b);if(state.probe&&performance.now()-lastProbe>150){lastProbe=performance.now();updateProbe(probePoint);}return {b,size};
+ if(state.physicsView==='none')drawOverview(b);if((state.probe||state.surfaceNormal)&&performance.now()-lastProbe>150){lastProbe=performance.now();updateCursorInspection(probePoint);}return {b,size};
 }
 let firstFrame=true;
 function frame(now){

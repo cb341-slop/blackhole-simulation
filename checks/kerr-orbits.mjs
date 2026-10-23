@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import {kerrRadius,kerrMetric,kerrInitialMomentum,kerrHamiltonian,kerrDerivative,kerrStep,traceKerrRay,horizonRadius} from '../dist/kerr.js';
-import {circularOrbit,photonRadius,iscoRadius,orbitEnergy,radialPotential,orbitDerivative,createOrbit,advanceOrbit,orbitGeometry} from '../dist/orbits.js';
-import {horizonUVAt} from '../dist/horizon-uv.js';
-import {traceRay} from '../dist/geometry.js';
-import {inspectPixelRay} from '../dist/ray-inspector.js';
+import {kerrRadius,kerrMetric,kerrInitialMomentum,kerrHamiltonian,kerrDerivative,kerrStep,traceKerrRay,horizonRadius} from '../public/black-hole-simulation-static/kerr.js';
+import {circularOrbit,photonRadius,iscoRadius,orbitEnergy,radialPotential,orbitDerivative,createOrbit,advanceOrbit,orbitGeometry} from '../public/black-hole-simulation-static/orbits.js';
+import {horizonUVAt} from '../public/black-hole-simulation-static/horizon-uv.js';
+import {traceRay} from '../public/black-hole-simulation-static/geometry.js';
+import {inspectPixelRay} from '../public/black-hole-simulation-static/ray-inspector.js';
 
 let checks=0;
 const check=(condition,message)=>{assert.ok(condition,message);checks++;};

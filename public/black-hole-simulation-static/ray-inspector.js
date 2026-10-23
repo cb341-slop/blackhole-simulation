@@ -14,7 +14,7 @@ export function segmentBoxHit(a,b,box){
  }return enter;
 }
 
-export function inspectPixelRay(state,basis,{x,y,width,height}){
+export function inspectPixelRay(state,basis,{x,y,width,height,includeHorizon=false}){
  const half=state.compare?width/2:width,second=state.compare&&x>=half,localX=second?x-half:x;
  const sx=(localX/half*2-1)*half/height,sy=1-y/height*2,tan=Math.tan(state.fov*Math.PI/360);
  const direction=norm(add(basis.forward,add(mul(basis.right,sx*tan),mul(basis.up,sy*tan))));
@@ -32,6 +32,6 @@ export function inspectPixelRay(state,basis,{x,y,width,height}){
   }
   if(!firstHit){for(const cube of state.cubes){const t=segmentBoxHit(a,b,cube);if(t!==null&&t<best){best=t;hit={kind:'cube',id:cube.id,position:a.map((v,k)=>v+(b[k]-v)*t)};}}if(hit)firstHit=hit;}
  }
- if(!firstHit&&state.blackhole&&state.horizonUV&&trace.status==='horizon'){const p=trace.points.at(-1),uv=horizonUVAt(p,state.mass,state.spin||0,state.time,state.horizonUVRotate);firstHit={kind:'horizon',position:p,radius:kerrRadius(p,(state.spin||0)*state.mass)/state.mass,...uv,label:String.fromCharCode(65+uv.sector)+(uv.band+1)};}
+ if(!firstHit&&state.blackhole&&(state.horizonUV||includeHorizon)&&trace.status==='horizon'){const p=trace.points.at(-1),uv=horizonUVAt(p,state.mass,state.spin||0,state.time,state.horizonUVRotate);firstHit={kind:'horizon',position:p,radius:kerrRadius(p,(state.spin||0)*state.mass)/state.mass,...uv,label:String.fromCharCode(65+uv.sector)+(uv.band+1)};}
  return {...trace,firstHit,crossings,lensing,direction};
 }

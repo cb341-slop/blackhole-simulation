@@ -3,13 +3,15 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
-import {GeometryRenderer} from '../dist/geometry.js';
-import {curvatureGeometry,tidalGeometry,tidalState} from '../dist/physics.js';
-import {horizonRadius,kerrRadius} from '../dist/kerr.js';
-import {iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy} from '../dist/orbits.js';
+import {inspectPixelRay} from '../public/black-hole-simulation-static/ray-inspector.js';
+import {surfaceNormalForHit,projectNormal} from '../public/black-hole-simulation-static/surface-normals.js';
+import {GeometryRenderer} from '../public/black-hole-simulation-static/geometry.js';
+import {curvatureGeometry,tidalGeometry,tidalState} from '../public/black-hole-simulation-static/physics.js';
+import {horizonRadius,kerrRadius} from '../public/black-hole-simulation-static/kerr.js';
+import {iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy} from '../public/black-hole-simulation-static/orbits.js';
 
-const html=fs.readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');
-const app=fs.readFileSync(new URL('../dist/app.js',import.meta.url),'utf8');
+const html=fs.readFileSync(new URL('../public/black-hole-simulation-static/index.html',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../public/black-hole-simulation-static/app.js',import.meta.url),'utf8');
 const noop=()=>{},draws=[];
 const ctx=new Proxy({createLinearGradient:()=>({addColorStop:noop}),measureText:()=>({width:20})},{get:(o,k)=>o[k]??noop});
 function element(tag='div',attrs=''){
@@ -22,9 +24,9 @@ let bufferUploads=0,observerRenders=0;
 const gl=new Proxy({canvas:elements.universe,COMPILE_STATUS:1,LINK_STATUS:2,LINES:3,POINTS:4,createShader:()=>({}),createProgram:()=>({}),createVertexArray:()=>({}),createBuffer:()=>({}),getShaderParameter:()=>true,getProgramParameter:()=>true,getAttribLocation:()=>0,getUniformLocation:()=>({}),getParameter:()=>16384,bufferData:()=>bufferUploads++,drawArrays:(...a)=>draws.push(a)},{get:(o,k)=>o[k]??noop});
 class Renderer{constructor(){this.gl=gl;}render(){observerRenders++;return [1000,750];}upload(){}}
 class Image{set src(_){} }
-const sandbox={document,window:{addEventListener:noop},Renderer,GeometryRenderer,curvatureGeometry,tidalGeometry,tidalState,horizonRadius,kerrRadius,iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy,drawHorizonUVReference:noop,drawDiskUVReference:noop,inspectPixelRay:noop,matchMedia:()=>({matches:false}),performance:{now:()=>0},requestAnimationFrame:noop,ResizeObserver:class{observe(){}},Image,devicePixelRatio:1,console,setTimeout:()=>0,clearTimeout:noop,URL};
+const sandbox={selectControlTab:noop,document,window:{addEventListener:noop},Renderer,GeometryRenderer,curvatureGeometry,tidalGeometry,tidalState,horizonRadius,kerrRadius,iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy,drawHorizonUVReference:noop,drawDiskUVReference:noop,inspectPixelRay,surfaceNormalForHit,projectNormal,matchMedia:()=>({matches:false}),performance:{now:()=>0},requestAnimationFrame:noop,ResizeObserver:class{observe(){}},Image,devicePixelRatio:1,console,setTimeout:()=>0,clearTimeout:noop,URL};
 vm.createContext(sandbox);
-vm.runInContext(app.replace(/^import .*;\n/gm,'')+'\nglobalThis.api={state,debug,inspection,view,geometry,frame,renderScene,updateTides,updateOrbit,getOrbit:()=>orbit};',sandbox);
+vm.runInContext(app.replace(/^import .*;\n/gm,'')+'\nglobalThis.api={state,debug,inspection,view,geometry,frame,renderScene,updateTides,updateOrbit,getOrbit:()=>orbit,updateCursorInspection};',sandbox);
 const {state,debug,inspection,view,geometry,renderScene,updateTides}=sandbox.api;
 let checks=0;
 const check=(condition,message)=>{assert.ok(condition,message);checks++;};
@@ -105,4 +107,20 @@ elements.horizonUV.checked=true;event('horizonUV','change');
 check(state.horizonUV&&!elements.horizonUVKey.hidden&&state.diagnostic===0,'Horizon UV toggle enables reference and normal diagnostic');
 event('nakedModelBtn');
 check(elements.horizonUV.disabled&&elements.horizonUVKey.hidden&&!state.blackhole,'RN mode hides unavailable horizon debugging');
+event('resetParamsBtn');
+elements.surfaceNormal.checked=true;event('surfaceNormal','change');
+check(state.surfaceNormal&&!elements.normalReadout.hidden,'Normal control enables the cursor readout');
+sandbox.api.updateCursorInspection({x:500,y:375});
+check(!elements.normalArrowOverlay.hidden&&elements.normalLabel.textContent.includes('Horizon'),'Captured single-view ray shows horizon normal without UV texture');
+event('compareViewBtn');
+sandbox.api.updateCursorInspection({x:250,y:375});
+check(!elements.normalArrowOverlay.hidden&&elements.normalLabel.textContent.includes('lensed'),'Left comparison pixel shows lensed surface normal');
+sandbox.api.updateCursorInspection({x:750,y:375});
+check(!elements.normalArrowOverlay.hidden&&elements.normalLabel.textContent.includes('straight'),'Right comparison pixel shows straight-ray surface normal');
+event('curvatureViewBtn');
+check(elements.normalArrowOverlay.hidden,'Diagram transition hides cursor normal immediately');
+event('compareViewBtn');
+check(state.surfaceNormal,'Switching views preserves opt-in normal setting');
+elements.surfaceNormal.checked=false;event('surfaceNormal','change');
+check(elements.normalArrowOverlay.hidden&&elements.normalReadout.hidden,'Disabling normal removes arrow and readout');
 console.log(`${checks} interaction checks passed: startup, playback, scrub, shared GPU buffers, cameras, model and diagnostic transitions.`);
