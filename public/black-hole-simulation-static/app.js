@@ -3,6 +3,7 @@ import {GeometryRenderer} from './geometry.js?v=6';
 import {drawDiskUVReference} from './disk-uv.js?v=6';
 import {inspectPixelRay} from './ray-inspector.js?v=12';
 import {surfaceNormalForHit,projectNormal,projectLensedNormal,projectSurfacePoint,straightSurfaceOcclusion} from './surface-normals.js?v=20';
+import {createDiskPin,projectDiskPin} from './disk-pins.js?v=21';
 import {curvatureGeometry,tidalGeometry,tidalState} from './physics.js?v=6';
 import {horizonRadius,kerrRadius} from './kerr.js?v=6';
 import {iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy} from './orbits.js?v=6';
@@ -260,7 +261,7 @@ for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addE
 function zoom(delta){if(state.pathView||state.physicsView!=='none')inspection.distance=Math.max(3*state.mass,Math.min(160*state.mass,inspection.distance*Math.exp(delta*.001)));else if(view.mode==='orbit')view.distance=Math.max(state.blackhole?2.025*state.mass:2.8,Math.min(65,view.distance*Math.exp(delta*.001)));else{const b=basis();view.position=add(view.position,mul(b.forward,-delta*.012));}dirty=true;}
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY);},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-let lastProbe=0,probePoint=null,normalAnchor=null;
+let lastProbe=0,probePoint=null,normalAnchor=null,normalPin=null,normalPinCache=null,normalTap=null;
 function updateProbe(point,referenceRay=null){
  if(!state.probe||state.pathView||!point)return;
  const rect=canvas.getBoundingClientRect(),x=point.x,y=point.y;if(x<0||y<0||x>rect.width||y>rect.height)return;
@@ -279,7 +280,7 @@ function drawNormalSample(ray,point,b,rect,suffix,left,width){
  const n=surfaceNormalForHit(ray.firstHit,state.mass,state.blackhole?state.spin:0);
  const viewLabel=ray.matched?'straight · same point'+(ray.occlusion?' · hidden':''):ray.lensing?'lensed':'straight';
  const label=n?(ray.firstHit.kind==='disk'?`Disk ${ray.firstHit.face}`:'Horizon capture surface'):ray.firstHit?.kind==='cube'?'Cube occlusion':ray.status==='budget'?'Ray budget exhausted':'No disk or horizon';
- const projection=n?(ray.lensing?projectLensedNormal(n,ray,state,b,{...point,width:rect.width,height:rect.height}):projectNormal(n,b,52,ray.firstHit.position)):null;
+ const projection=n?(ray.pinned?ray.normalProjection:ray.lensing?projectLensedNormal(n,ray,state,b,{...point,width:rect.width,height:rect.height}):projectNormal(n,b,52,ray.firstHit.position)):null;
  let path='',glyph=n&&!projection?'?':'';
  if(projection){
   const {dx,dy,towardCamera}=projection,end=[x+dx,y+dy],plane=Math.hypot(dx,dy),ux=plane?dx/plane:0,uy=plane?dy/plane:0;
@@ -300,17 +301,53 @@ function drawNormalSample(ray,point,b,rect,suffix,left,width){
  for(const [id,offset] of [['normalLabel',0],['normalVector',15]]){element(id).setAttribute('x',labelX);element(id).setAttribute('y',labelY+offset);}
  return {normal:n,description:`${viewLabel}: ${label}${n?' · N ('+n.map(v=>v.toFixed(2)).join(', ')+')':''}${ray.occlusion?' · '+ray.occlusion:''}${n&&!projection?' · direction unavailable near a caustic or trace boundary':''}`};
 }
+function drawPinnedNormal(b,rect){
+ const hit=normalPin.hit,half=state.compare?rect.width/2:rect.width,overlay=$('normalArrowOverlay');
+ const descriptions=[`Pinned disk ${hit.face} · fixed source P (${hit.position.map(v=>v.toFixed(3)).join(', ')}).`];
+ $('normalArrowLeft').style.display='none';$('normalArrowRight').style.display='none';
+ const radius=(state.blackhole&&state.spin>0?kerrRadius(hit.position,state.spin*state.mass):Math.hypot(hit.position[0],hit.position[2]))/state.mass;
+ const valid=state.disk&&radius>(state.blackhole?iscoRadius(state.spin):2.15)&&radius<state.diskRadius;
+ if(valid){
+  const key=JSON.stringify([b,rect.width,rect.height,state.mass,state.charge,state.blackhole,state.spin,state.compare,state.lensing,state.cubes,state.diskRadius]);
+  if(normalPinCache?.key!==key){
+   const result=projectDiskPin(normalPin,state,b,rect);
+   if(result){
+    const n=surfaceNormalForHit(hit,state.mass,state.spin);
+    result.ray={...result.ray,pinned:true,normalProjection:result.ray.lensing?projectLensedNormal(n,result.ray,state,b,{...result.point,width:rect.width,height:rect.height}):projectNormal(n,b,52,hit.position)};
+    if(!result.ray.lensing)result.ray.occlusion=straightSurfaceOcclusion(hit,state,b);
+   }
+   normalPinCache={key,result};
+  }
+  const result=normalPinCache.result,label=state.compare||state.lensing?'lensed':'straight';
+  if(result?.onScreen){
+   $('normalArrowLeft').style.display='';
+   descriptions.push(drawNormalSample(result.ray,result.point,b,rect,'',0,half).description);
+  }else descriptions.push(`${label}: pinned point ${result?'is outside the image':'has no available image on the selected ray branch'}.`);
+  if(state.compare){
+   const source=projectSurfacePoint(hit.position,b,{width:half,height:rect.height,fov:state.fov,offsetX:half});
+   if(source?.onScreen){
+    $('normalArrowRight').style.display='';
+    descriptions.push(drawNormalSample({firstHit:hit,lensing:false,matched:true,occlusion:straightSurfaceOcclusion(hit,state,b)},source,b,rect,'Right',half,half).description);
+   }else descriptions.push(`straight: pinned point is ${source?'outside the image':'behind the camera'}.`);
+  }
+ }else descriptions.push(state.disk?'Pinned point is outside the current disk.':'Disk is hidden; the pinned point is retained.');
+ const description=descriptions.join('\n');$('normalReadout').textContent=description;overlay.setAttribute('aria-label',description);
+ overlay.hidden=$('normalArrowLeft').style.display==='none'&&$('normalArrowRight').style.display==='none';
+}
 function updateCursorInspection(point){
  const overlay=$('normalArrowOverlay');
- if((!state.probe&&!state.surfaceNormal)||state.pathView||state.physicsView!=='none'||!point){overlay.hidden=true;$('probeMarker').hidden=true;return;}
- const rect=canvas.getBoundingClientRect(),{x,y}=point;
- if(x<0||y<0||x>=rect.width||y>=rect.height){overlay.hidden=true;return;}
+ if((!state.probe&&!state.surfaceNormal)||state.pathView||state.physicsView!=='none'||(!point&&!normalPin)){overlay.hidden=true;$('probeMarker').hidden=true;return;}
+ const rect=canvas.getBoundingClientRect(),x=point?.x,y=point?.y;
+ const inside=point&&x>=0&&y>=0&&x<rect.width&&y<rect.height;
+ if(!inside&&!normalPin){overlay.hidden=true;return;}
  const b=basis(),trace=p=>inspectPixelRay(state,b,{...p,width:rect.width,height:rect.height,includeHorizon:state.surfaceNormal});
  const half=rect.width/2,hoveringLensed=!state.compare||x<half;
- const cursorRay=state.probe||!state.compare||hoveringLensed?trace(point):null;
- if(state.probe)updateProbe(point,cursorRay);
+ const cursorRay=inside&&(state.probe||!normalPin&&(!state.compare||hoveringLensed))?trace(point):null;
+ if(state.probe&&inside)updateProbe(point,cursorRay);else if(!inside)$('probeMarker').hidden=true;
  if(!state.surfaceNormal){overlay.hidden=true;return;}
  $('normalArrowSVG').setAttribute('viewBox',`0 0 ${rect.width} ${rect.height}`);
+ if(normalPin){drawPinnedNormal(b,rect);return;}
+ $('normalArrowLeft').style.display='';
  $('normalArrowRight').style.display='none';
  let samples;
  if(state.compare){
@@ -334,19 +371,37 @@ function updateCursorInspection(point){
  overlay.hidden=!state.compare&&!samples[0].normal;
 }
 $('surfaceNormal').addEventListener('change',()=>{
- state.surfaceNormal=$('surfaceNormal').checked;normalAnchor=null;$('normalReadout').hidden=!state.surfaceNormal;
+ state.surfaceNormal=$('surfaceNormal').checked;normalAnchor=null;normalPin=null;normalPinCache=null;$('clearNormalPin').hidden=true;$('normalPinHint').hidden=!state.surfaceNormal;$('normalReadout').hidden=!state.surfaceNormal;
  $('normalReadout').textContent=state.compare?'Hover the lensed (left) image to select a surface point.':'Move or tap on the image.';
  if(state.surfaceNormal){if(state.physicsView!=='none')setPhysicsView('none');setPathView(false);}
  updateCursorInspection(probePoint);dirty=true;
 });
+$('clearNormalPin').addEventListener('click',()=>{
+ normalPin=null;normalPinCache=null;normalAnchor=null;$('clearNormalPin').hidden=true;
+ $('normalReadout').textContent='Hover to inspect; click or tap the disk to pin a source point.';
+ updateCursorInspection(probePoint);dirty=true;
+});
+canvas.addEventListener('pointerdown',e=>{
+ normalTap=state.surfaceNormal&&pointers.size===1&&e.button===0?{id:e.pointerId,x:e.clientX,y:e.clientY,moved:false}:null;
+});
 function recordCursor(e){
  const rect=canvas.getBoundingClientRect();probePoint={x:e.clientX-rect.left,y:e.clientY-rect.top};
+ if(normalTap?.id===e.pointerId&&Math.hypot(e.clientX-normalTap.x,e.clientY-normalTap.y)>5)normalTap.moved=true;
+ if(e.type==='pointerup'){
+  const tap=normalTap;normalTap=null;
+  if(tap?.id===e.pointerId&&!tap.moved&&state.surfaceNormal&&!state.pathView&&state.physicsView==='none'){
+   const b=basis(),ray=inspectPixelRay(state,b,{...probePoint,width:rect.width,height:rect.height,includeHorizon:true});
+   const pin=createDiskPin(ray,probePoint,state,b,rect);
+   if(pin){normalPin=pin;normalPinCache=null;$('clearNormalPin').hidden=false;dirty=true;}
+  }
+ }
  const now=performance.now();if((state.probe||state.surfaceNormal)&&(e.type==='pointerup'||now-lastProbe>90)){lastProbe=now;updateCursorInspection(probePoint);}
 }
 canvas.addEventListener('pointermove',recordCursor);
 canvas.addEventListener('pointerup',recordCursor);
-canvas.addEventListener('pointerleave',e=>{if(e.pointerType==='touch')return;$('probeMarker').hidden=true;$('normalArrowOverlay').hidden=true;probePoint=null;});
-canvas.addEventListener('pointercancel',()=>{$('probeMarker').hidden=true;$('normalArrowOverlay').hidden=true;probePoint=null;});
+canvas.addEventListener('pointerleave',e=>{if(e.pointerType==='touch')return;$('probeMarker').hidden=true;probePoint=null;if(normalPin)updateCursorInspection(null);else $('normalArrowOverlay').hidden=true;});
+canvas.addEventListener('pointercancel',()=>{normalTap=null;$('probeMarker').hidden=true;probePoint=null;if(normalPin)updateCursorInspection(null);else $('normalArrowOverlay').hidden=true;});
+canvas.addEventListener('lostpointercapture',()=>{normalTap=null;});
 function isEditing(e){return e.target.closest?.('#controls')||e.target.closest?.('.app-tools')||/INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY|^A$/.test(e.target.tagName)||$('aboutDialog').open;}
 window.addEventListener('keydown',e=>{if(isEditing(e))return;const key=e.key.toLowerCase();if(['w','a','s','d','q','e','shift','arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)){e.preventDefault();keys.add(key);}if(e.repeat)return;if(key===' ')togglePause();if(key==='f')resetCamera();if(key==='c')addCube();});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();pointers.clear();});
@@ -527,7 +582,7 @@ function renderScene(){
   if(state.compare){const [w,h]=size,left=Math.floor(w/2),aspect=canvas.clientWidth/canvas.clientHeight/2;renderer.gl.viewport(0,0,left,h);geometry.render({...state,lensing:true},b,debug,b,{aspect});renderer.gl.viewport(left,0,w-left,h);geometry.render({...state,lensing:false},b,debug,b,{aspect});renderer.gl.viewport(0,0,w,h);}
   else geometry.render(state,b,debug,b);
  }}
- if(state.physicsView==='none')drawOverview(b);if((state.probe||state.surfaceNormal)&&performance.now()-lastProbe>150){lastProbe=performance.now();updateCursorInspection(probePoint);}return {b,size};
+ if(state.physicsView==='none')drawOverview(b);if(state.surfaceNormal&&normalPin||(state.probe||state.surfaceNormal)&&performance.now()-lastProbe>150){lastProbe=performance.now();updateCursorInspection(probePoint);}return {b,size};
 }
 let firstFrame=true;
 function frame(now){

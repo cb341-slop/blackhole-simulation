@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import {inspectPixelRay} from '../public/black-hole-simulation-static/ray-inspector.js';
 import {surfaceNormalForHit,projectNormal,projectLensedNormal,projectSurfacePoint,straightSurfaceOcclusion} from '../public/black-hole-simulation-static/surface-normals.js';
+import {createDiskPin,projectDiskPin} from '../public/black-hole-simulation-static/disk-pins.js';
 import {GeometryRenderer} from '../public/black-hole-simulation-static/geometry.js';
 import {curvatureGeometry,tidalGeometry,tidalState} from '../public/black-hole-simulation-static/physics.js';
 import {horizonRadius,kerrRadius} from '../public/black-hole-simulation-static/kerr.js';
@@ -24,9 +25,9 @@ let bufferUploads=0,observerRenders=0;
 const gl=new Proxy({canvas:elements.universe,COMPILE_STATUS:1,LINK_STATUS:2,LINES:3,POINTS:4,createShader:()=>({}),createProgram:()=>({}),createVertexArray:()=>({}),createBuffer:()=>({}),getShaderParameter:()=>true,getProgramParameter:()=>true,getAttribLocation:()=>0,getUniformLocation:()=>({}),getParameter:()=>16384,bufferData:()=>bufferUploads++,drawArrays:(...a)=>draws.push(a)},{get:(o,k)=>o[k]??noop});
 class Renderer{constructor(){this.gl=gl;}render(){observerRenders++;return [1000,750];}upload(){}}
 class Image{set src(_){} }
-const sandbox={Event,selectControlTab:noop,document,window:{addEventListener:noop},Renderer,GeometryRenderer,curvatureGeometry,tidalGeometry,tidalState,horizonRadius,kerrRadius,iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy,drawHorizonUVReference:noop,drawDiskUVReference:noop,inspectPixelRay,surfaceNormalForHit,projectNormal,projectLensedNormal,projectSurfacePoint,straightSurfaceOcclusion,matchMedia:()=>({matches:false}),performance:{now:()=>0},requestAnimationFrame:noop,ResizeObserver:class{observe(){}},Image,devicePixelRatio:1,console,setTimeout:()=>0,clearTimeout:noop,URL};
+const sandbox={Event,selectControlTab:noop,document,window:{addEventListener:noop},Renderer,GeometryRenderer,curvatureGeometry,tidalGeometry,tidalState,horizonRadius,kerrRadius,iscoRadius,photonRadius,createOrbit,advanceOrbit,orbitGeometry,orbitEnergy,drawHorizonUVReference:noop,drawDiskUVReference:noop,inspectPixelRay,createDiskPin,projectDiskPin,surfaceNormalForHit,projectNormal,projectLensedNormal,projectSurfacePoint,straightSurfaceOcclusion,matchMedia:()=>({matches:false}),performance:{now:()=>0},requestAnimationFrame:noop,ResizeObserver:class{observe(){}},Image,devicePixelRatio:1,console,setTimeout:()=>0,clearTimeout:noop,URL};
 vm.createContext(sandbox);
-vm.runInContext(app.replace(/^import .*;\n/gm,'')+'\nglobalThis.api={state,debug,inspection,view,geometry,frame,renderScene,updateTides,updateOrbit,getOrbit:()=>orbit,updateCursorInspection,basis};',sandbox);
+vm.runInContext(app.replace(/^import .*;\n/gm,'')+'\nglobalThis.api={state,debug,inspection,view,geometry,frame,renderScene,updateTides,updateOrbit,getOrbit:()=>orbit,updateCursorInspection,basis,getNormalPin:()=>normalPin};',sandbox);
 const {state,debug,inspection,view,geometry,renderScene,updateTides}=sandbox.api;
 let checks=0;
 const check=(condition,message)=>{assert.ok(condition,message);checks++;};
@@ -156,6 +157,50 @@ check(!elements.normalArrowOverlay.hidden&&elements.normalArrowRight.style.displ
 state.fov=savedFov;
 sandbox.api.updateCursorInspection({x:0,y:0});
 check(elements.normalArrowOverlay.hidden&&elements.normalReadout.textContent.includes('no source surface selected'),'Ray miss clears both source markers');
+const pointer=(type,x,y,id=1,pointerType='mouse')=>{for(const fn of elements.universe.events[type]??[])fn({type,clientX:x,clientY:y,pointerId:id,pointerType,button:0,preventDefault:noop});};
+pointer('pointerdown',selected.x,selected.y);pointer('pointerup',selected.x,selected.y);
+const pinned=sandbox.api.getNormalPin(),pinnedXYZ=JSON.stringify(pinned?.hit.position),initialPixel=+elements.normalOrigin.getAttribute('cx');
+check(pinned&&elements.normalReadout.textContent.startsWith('Pinned disk')&&!elements.clearNormalPin.hidden,'Click pins the actual disk source and exposes Clear pin');
+sandbox.api.updateCursorInspection({x:750,y:375});
+check(sandbox.api.getNormalPin()===pinned&&JSON.stringify(pinned.hit.position)===pinnedXYZ,'Hovering another point does not replace the world pin');
+check(elements.probeView.textContent.startsWith('LENSING OFF'),'Pinned normal preserves independent hover ray inspection');
+view.theta+=.08;renderScene();
+const movedPixel={x:+elements.normalOrigin.getAttribute('cx'),y:+elements.normalOrigin.getAttribute('cy')};
+check(!elements.normalArrowOverlay.hidden&&Math.abs(movedPixel.x-initialPixel)>1,'Camera motion moves the pinned marker on screen even when animation is paused');
+const movedRay=inspectPixelRay(state,sandbox.api.basis(),{...movedPixel,width:1000,height:750,includeHorizon:true});
+check(movedRay.firstHit?.kind==='disk'&&Math.hypot(...movedRay.firstHit.position.map((v,i)=>v-pinned.hit.position[i]))<1e-5,'Moved lensed marker still traces to the originally clicked world position');
+pointer('pointerleave',0,0);
+check(!elements.normalArrowOverlay.hidden&&sandbox.api.getNormalPin()===pinned,'Pinned arrows remain visible after the mouse leaves the image');
+pointer('pointerdown',selected.x,selected.y);pointer('pointermove',selected.x+25,selected.y+4);pointer('pointerup',selected.x+25,selected.y+4);renderScene();
+check(sandbox.api.getNormalPin()===pinned&&JSON.stringify(pinned.hit.position)===pinnedXYZ,'Camera drag does not repick the disk at the release pixel');
+pointer('pointerdown',150,200,1,'touch');pointer('pointerdown',300,200,2,'touch');pointer('pointermove',320,200,2,'touch');pointer('pointerup',150,200,1,'touch');pointer('pointerup',320,200,2,'touch');
+check(sandbox.api.getNormalPin()===pinned,'Two-finger camera gestures do not replace the pin');
+pointer('pointercancel',0,0);
+check(!elements.normalArrowOverlay.hidden&&sandbox.api.getNormalPin()===pinned,'Pointer cancellation retains the fixed source marker');
+elements.universe.getBoundingClientRect=()=>({left:0,top:0,width:1200,height:720});renderScene();
+const mapped=projectSurfacePoint(pinned.hit.position,sandbox.api.basis(),{width:600,height:720,fov:state.fov,offsetX:600});
+check(mapped?.onScreen&&Math.abs(+elements.normalOriginRight.getAttribute('cx')-mapped.x)<1e-7&&Math.abs(+elements.normalOriginRight.getAttribute('cy')-mapped.y)<1e-7,'Resizing reprojects the same source point in the straight view');
+check(JSON.stringify(pinned.hit.position)===pinnedXYZ,'Camera and viewport changes never change pinned XYZ');
+elements.universe.getBoundingClientRect=()=>({left:0,top:0,width:1000,height:750});
+viewEvent('observer');sandbox.api.updateCursorInspection(null);
+check(sandbox.api.getNormalPin()===pinned&&elements.normalArrowRight.style.display==='none','Switching comparison off retains the world pin and hides the duplicate');
+let replacement;
+for(const x of [200,350,500,650,800])for(const y of [200,300,500,600]){
+ const ray=inspectPixelRay(state,sandbox.api.basis(),{x,y,width:1000,height:750});
+ if(ray.firstHit?.kind==='disk'&&Math.hypot(...ray.firstHit.position.map((v,i)=>v-pinned.hit.position[i]))>1)replacement={x,y,hit:ray.firstHit};
+}
+check(replacement,'Find another disk point for a replacement touch selection');
+pointer('pointerdown',replacement.x,replacement.y,3,'touch');pointer('pointerup',replacement.x,replacement.y,3,'touch');
+check(sandbox.api.getNormalPin()!==pinned&&Math.hypot(...sandbox.api.getNormalPin().hit.position.map((v,i)=>v-replacement.hit.position[i]))<1e-8,'New touch selects and pins its actual new source position');
+pointer('pointerleave',replacement.x,replacement.y,3,'touch');
+check(!elements.normalArrowOverlay.hidden,'Touch pin persists after the finger leaves');
+
+event('clearNormalPin');
+check(sandbox.api.getNormalPin()===null&&elements.clearNormalPin.hidden,'Clear pin returns to hover inspection');
+pointer('pointerdown',150,200);pointer('pointermove',180,200);pointer('pointerup',180,200);
+check(sandbox.api.getNormalPin()===null,'Dragging without an existing pin does not create one');
+viewEvent('compare');
+
 viewEvent('compare');sandbox.api.updateCursorInspection({x:500,y:375});
 check(elements.normalArrowRight.style.display==='none'&&elements.normalReadout.textContent.split('\n').length===1,'Single view hides the duplicate and restores one normal');
 viewEvent('curvature');
